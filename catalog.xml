@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<catalog>
+<!-- Orion -->
+<star name="Betelgeuse" constellation="Orion">
+	<location right-asc="05h 55m 10.30536s" decl="+07d 24m 25.4304s" distance="548"/>
+	<magnitude apparent="0.50" absolute="-5.85"/>
+	<motion radial="+21.91" right-asc="+26.42" decl="+9.60"/>
+	<alias>alpha Ori</alias>
+	<alias>HR 2061</alias>
+	<alias>HD 39801</alias>
+</star>
+<star name="Rigel" constellation="Orion">
+	<location right-asc="05h 14m 32.27210s" decl="-08d 12m 05.8981s" distance="860"/>
+	<magnitude apparent="0.13" absolute="-7.84"/>
+	<motion radial="+17.8" right-asc="+1.31" decl="+0.50"/>
+	<alias>beta Ori</alias>
+	<alias>HR 1713</alias>
+	<alias>HD 34085</alias>
+</star>
+<star name="Bellatrix" constellation="Orion">
+	<location right-asc="05h 25m 07.86325s" decl="+06d 20m 58.9318s" distance="250"/>
+	<magnitude apparent="1.64" absolute="-2.72"/>
+	<motion radial="+18.2" right-asc="-8.11" decl="-12.88"/>
+	<alias>gamma Ori</alias>
+	<alias>HR 1790</alias>
+	<alias>HD 35468</alias>
+</star>
+<star name="Alnilam" constellation="Orion">
+	<location right-asc="05h 36m 12.81s" decl="-01d 12m 06.9s" distance="1342"/>
+	<magnitude apparent="1.69" absolute="-6.38"/>
+	<motion radial="+25.9" right-asc="+1.49" decl="-1.06"/>
+	<alias>epsilon Ori</alias>
+	<alias>HR 1903</alias>
+	<alias>HD 37128</alias>
+</star>
+<star name="Alnitak" constellation="Orion">
+	<location right-asc="05h 40m 45.52666s" decl="-01d 56m 34.2649s" distance="1260"/>
+	<magnitude apparent="1.88" absolute="-6.0"/>
+	<motion radial="+18.5" right-asc="+3.19" decl="+2.03"/>
+	<alias>zeta Ori</alias>
+	<alias>HR 1948</alias>
+	<alias>HD 37742</alias>
+</star>
+<star name="Mintaka" constellation="Orion">
+	<location right-asc="05h 32m 00.40s" decl="-00d 17m 56.7s" distance="1260"/>
+	<magnitude apparent="2.2" absolute="-5.8"/>
+	<motion radial="+18.5" right-asc="+0.64" decl="-0.69"/>
+	<alias>delta Ori</alias>
+	<alias>HR 1851</alias>
+	<alias>HD 36486</alias>
+</star>
+<star name="Saiph" constellation="Orion">
+	<location right-asc="05h 47m 45.38884s" decl="-09d 40m 10.5777s" distance="650"/>
+	<magnitude apparent="2.09" absolute="-4.65"/>
+	<motion radial="+20.5" right-asc="+1.46" decl="-1.28"/>
+	<alias>kappa Ori</alias>
+	<alias>HR 2004</alias>
+	<alias>HD 38771</alias>
+</star>
+<star name="Meissa" constellation="Orion">
+	<location right-asc="05h 35m 08.27761s" decl="+09d 56m 02.9611s" distance="1100"/>
+	<magnitude apparent="3.47" absolute="-4.25"/>
+	<motion radial="+18.5" right-asc="+0.64" decl="-0.69"/>
+	<alias>lambda Ori</alias>
+	<alias>HR 1879</alias>
+	<alias>HD 36861</alias>
+</star>
+
+
+<!-- Lyra -->
+<star name="Vega" constellation="Lyra">
+	<location right-asc="18h 36m 56.33635s" decl="+38d 47m 01.2802s" distance="25.04"/>
+	<magnitude apparent="+0.026" absolute="+0.582"/>
+	<motion radial="-13.9" right-asc="200.94" decl="286.23"/>
+	<alias>alpha Lyr</alias>
+	<alias>HR 7001</alias>
+	<alias>HD 172167</alias>
+</star>
+
+
+<!-- Ursa Minor -->
+<star name="Polaris" constellation="Ursa Minor">
+	<location right-asc="02h 31m 48.704s" decl="+89d 15m 50.8s" distance="431"/>
+	<magnitude apparent="+1.98" absolute="-3.6"/>
+	<motion radial="-17"/>
+	<alias>alpha UMi</alias>
+	<alias>HR 424</alias>
+	<alias>HD 8890</alias>
+</star>
+
+
+<!-- Canis Major -->
+<star name="Sirius" constellation="Canis Major">
+	<location right-asc="06h 45m 08.917s" decl="-16d 42m 58.02s" distance="8.6"/>
+	<magnitude apparent="-1.47" absolute="+1.46"/>
+	<motion radial="-5.5" right-asc="-546.01" decl="-1223.07"/>
+	<alias>alpha CMa</alias>
+	<alias>HR 2491</alias>
+	<alias>HD 48915</alias>
+</star>
+
+
+<!-- Carina -->
+<star name="Canopus" constellation="Carina">
+	<location right-asc="06h 23m 57.10988s" decl="-52d 41m 44.3810s" distance="310"/>
+	<magnitude apparent="-0.74" absolute="-5.71"/>
+	<motion radial="20.3" right-asc="19.93" decl="23.24"/>
+	<alias>alpha Car</alias>
+	<alias>HR 2326</alias>
+	<alias>HD 45348</alias>
+</star>
+
+
+<!-- Bootes -->
+<star name="Arcturus" constellation="Bootes">
+	<location right-asc="14h 15m 39.7s" decl="+19d 10m 56s" distance="36.7"/>
+	<magnitude apparent="-0.05" absolute="-0.3"/>
+	<motion radial="-5.19" right-asc="-1093.45" decl="-1999.4"/>
+	<alias>alpha Boo</alias>
+	<alias>HR 5340</alias>
+	<alias>HD 124897</alias>
+</star>
+</catalog>
