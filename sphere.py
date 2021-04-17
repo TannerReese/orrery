@@ -1,10 +1,13 @@
 import math
-import sys
+import re
 
 from typing import Tuple, Union
 
 # Vector type alias for type hints
 Vector = Tuple[float, float, float]
+
+# Forward declaration of type
+SpherePoint = None
 
 class SpherePoint:
 	"""
@@ -78,6 +81,93 @@ class SpherePoint:
 		else:
 			raise ValueError('Too Many Arguments provided to SpherePoint')
 	
+	# Compiled regular expression for parsing angles
+	# Groups:  1  =  DEGREES
+	#          2  =  MINUTES
+	#          3  =  SECONDS
+	#          4  =  RADIANS
+	ANGLE_PATTERN = re.compile("\s*(-?[.\d]+)\s*[dD]?\s*(?:([.\d]+)\s*[mM])?\s*(?:([.\d]+)\s*[sS])?\s*|\s*(-?[.\d]+)\s*[rR]\s*")
+	
+	@staticmethod
+	def parseAngle(string: str) -> float:
+		"""
+		Returns a floating point angle in degrees from a string of one of the formats,
+		    <DEGREES> [d|D] [<MINUTES> (m|M)] [<SECONDS> (s|S)]
+		    <RADIANS> (r|R)
+		"""
+		
+		m = SpherePoint.ANGLE_PATTERN.fullmatch(string)  # Get groups
+		if m is None :  # Ensure that it matches angle format
+			raise ValueError(f"Angle String \"{string}\" does not match angle format")
+		
+		deg = 0  # Accumulate values into `lat`
+		sign = 1  # Save sign until end
+		if m.group(1) is not None :  # Degrees
+			d = float(m.group(1))
+			
+			deg += abs(d)  # Angle should remain positive until the sign is incorporated
+			if d < 0 :
+				sign = -1
+		if m.group(2) is not None :  # Minutes
+			deg += float(m.group(2)) / 60
+		if m.group(3) is not None :  # Seconds
+			deg += float(m.group(3)) / 3600
+		
+		if m.group(4) is not None :  # Radians
+			r = float(m.group(4))
+			
+			deg += math.degrees(abs(r))  # Angle should remain positive until the sign is incorporated
+			if r < 0 :
+				sign = -1
+		
+		return deg * sign
+	
+	@staticmethod
+	def parseLatLong(string: str) -> SpherePoint:
+		"""
+		Construct a SpherePoint from a string of the form
+		    <LAT> [n|N|s|S], <LONG> [e|E|w|W]
+		Where <LAT> and <LONG> are in one of the formats
+		    <DEGREES> [d|D] [<MINUTES> (m|M)] [<SECONDS> (s|S)]
+		    <RADIANS> (r|R)
+		With any amount of whitespace (except within a number)
+		
+		Args:
+		    string : str  -- String to parse into SpherePoint
+		
+		Raises:
+		    ValueError -- When `string` is not formatted correctly
+		"""
+		
+		# Allow for negative numbers to be passed on command line without being recognized as options
+		string = string.replace('_', '-')
+		
+		# Get latitude and longitude strings
+		latS, lngS = string.split(',')
+		latS, lngS = latS.strip(), lngS.strip()  # Remove leading and trailing whitespace
+		
+		# Check for cardinal directions
+		latSign = 1
+		if latS[-1] == 's' or latS[-1] == 'S' :
+			latSign = -1  # Invert direction of latitude
+			latS = latS[:-1]  # Remove last character
+		elif latS[-1] == 'n' or latS[-1] == 'N' :
+			latS = latS[:-1]  # Remove last character
+		
+		lngSign = 1
+		if lngS[-1] == 'w' or lngS[-1] == 'W' :
+			lngSign = -1  # Invert direction of longitude
+			lngS = lngS[:-1]  # Remove last character
+		elif lngS[-1] == 'e' or lngS[-1] == 'E' :
+			lngS = lngS[:-1]  # Remove last character
+		
+		# Parse Latitude angle
+		lat = SpherePoint.parseAngle(latS)
+		# Parse Longitude angle
+		lng = SpherePoint.parseAngle(lngS)
+		
+		return SpherePoint(lat * latSign, lng * lngSign, isdeg=True)
+	
 	
 	
 	# Calculate the latitude and longitude
@@ -126,8 +216,22 @@ class SpherePoint:
 	def vector(self) -> Tuple[float, float, float]:
 		""" Get unit-length vector representing this point """
 		if self._vector is None:
-			self._calc_vector()
+			self._calc_vector()	
 		return self._vector
+	
+	
+	def geoformat(self):
+		""" Convert SpherePoint to String in Geographic Coordinates """
+		latdir = 'S' if self.lat < 0 else 'N'
+		longdir = 'W' if self.long < 0 else 'E'
+		return "%.7f %c, %.7f %c" % (abs(self.latd), latdir, abs(self.longd), longdir)
+	
+	def __str__(self):
+		return "%.7fd ,  %.7fd" % (self.latd, self.longd)
+	
+	def __repr__(self):
+		return f"SpherePoint({self.lat}, {self.long})"
+
 
 
 # Forward declaration of type

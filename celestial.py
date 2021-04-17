@@ -2,7 +2,9 @@
 
 import curses
 import curses.ascii
-import datetime
+import datetime as dt
+import sys
+import argparse
 
 from sphere import *
 from star import *
@@ -52,13 +54,13 @@ class Celestial:
 	To send points in the viewing port to a rectangular window, a local mercator projection is used
 	
 	Attributes:
-	    view : Rotation -- Transformation from horizontal coordinates to the viewers perspective
+	    _view : Rotation -- Transformation from horizontal coordinates to the viewers perspective
 	    width : float -- Width (in radians) of the viewing port
 	    height : float -- Height (in radians) of the viewing port
 	    
 		_total : Rotation -- Transformation from equatorial coordinates to viewer perspective
 	    _sky : Rotation -- Store the transformation from equatorial coordinates to horizontal coordinates
-	    _time : datetime.datetime -- Date and time of observation
+	    _time : dt.datetime -- Date and time of observation
 	    _loc : SpherePoint -- Location on Earth's surface of observation
 	    
 	    _byline : [(int, Stellar)] -- List of objects visible in window ordered by which line they are on. First element of tuple is line number
@@ -71,9 +73,9 @@ class Celestial:
 	    location : SpherePoint -- Get private location
 	"""
 	
-	EPOCH_J2000 = datetime.datetime(2000, 1, 1, hour=12)  # J2000 epoch on 12h, Jan 1st, 2000
+	EPOCH_J2000 = dt.datetime(2000, 1, 1, hour=12)  # J2000 epoch on 12h, Jan 1st, 2000
 	
-	def __init__(self, time : datetime.datetime, loc : SpherePoint, wid : float = math.radians(50), hei : float = math.radians(50)):
+	def __init__(self, time: dt.datetime, loc: SpherePoint, wid: float = math.radians(50), hei: float = math.radians(50)):
 		self._view = Rotation.identity()
 		self.width = wid
 		self.height = hei
@@ -238,8 +240,13 @@ class Celestial:
 		return self._total
 	
 	@property
-	def time(self) -> datetime.datetime:
+	def time(self) -> dt.datetime:
 		return self._time
+	
+	@time.setter
+	def time(self, tm: dt.datetime):
+		self._time = tm
+		self._sky = None  # Invalidate sky transform
 	
 	@property
 	def location(self) -> SpherePoint:
@@ -338,23 +345,70 @@ class Celestial:
 			win.addstr(1, 0, "  |  ".join(self._selected.aliases))  # Print other names
 			
 			pt = self.sky(self._selected.point)  # Get location in horizontal coordinates
-			win.addstr(2, 0, f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % (2 * math.pi)}d")  # Altitude & Azimuth in degrees
+			win.addstr(2, 0, f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % 360}d")  # Altitude & Azimuth in degrees
 			rah, ram, ras = self._selected.right_asc  # Get Hours, Minutes, and Seconds of Right Ascension
 			dcd, dcm, dcs = self._selected.decl  # Get Degrees, Minutes, and Seconds of Declination
 			dcsign = '-' if dcd < 0 else '+'  # Get sign of declination
 			dcd, dcm, dcs = abs(dcd), abs(dcm), abs(dcs)  # Remove sign from components
 			win.addstr(3, 0, f"(RA, Dec):  {rah}h {ram}m {ras}s ,  {dcsign}{dcd}d {dcm}m {dcs}s")  # Right Ascension & Declination
 		
+		# Draw Info about Time, Location, and View
+		rows, _ = win.getmaxyx()
+		cnt = self._view.inverse(SpherePoint(0, 0))  # Calculate center of Viewport
+		win.addstr(rows - 3, 0, "Center of View (Alt, Az):  %.6fd ,  %.6fd" % (cnt.latd, (-cnt.longd) % 360))  # Center of Viewport
+		win.addstr(rows - 2, 0, "Location: " + self._loc.geoformat())  # Location
+		win.addstr(rows - 1, 0, "Time: " + self._time.isoformat())  # Time
+		
 		# Update Window to display new
 		win.refresh()
 
 
 
-def main(stdscr):
-	# Construct Celestial Sphere
-	celes = Celestial(datetime.datetime.utcnow(), SpherePoint(40.68, -74.004, isdeg=True), math.pi / 2, math.pi / 2)
-	# Load Stellar Catalog
-	catalog = loadCatalog('catalog.xml')
+if __name__ == '__main__':
+	# Parse Command Line Arguments
+	# -----------------------------------------------
+	parser = argparse.ArgumentParser(description="")
+	# Time that should be assumed for display
+	parser.add_argument('-t', '--time',
+		type=dt.datetime.fromisoformat,
+		default=dt.datetime.utcnow(),
+		metavar='DATETIME', dest='time',
+		help="Time to observe the sky at. Defaults to Now"
+	)
+	parser.add_argument('-l', '--location',
+		type=SpherePoint.parseLatLong,
+		default=SpherePoint(0, 0),
+		metavar='LAT,LONG', dest='loc',
+		help="Latitude and Longitude (in degrees) of location to observe from. Defaults to 0N,0W"
+	)
+	parser.add_argument('-S', '--sync',
+		action='store_true',
+		dest='isSync',
+		help="Application will move time forward"
+	)
+	parser.add_argument('-W', '--width',
+		type=int,
+		default=20,
+		metavar='DEGREES', dest='wid',
+		help="Angular width in degrees of the viewport"
+	)
+	parser.add_argument('-H', '--height',
+		type=int,
+		default=20,
+		metavar='DEGREES', dest='hei',
+		help="Angular height in degrees of the viewport"
+	)
+	
+	args = parser.parse_args()  # Get argument namespace
+	
+	
+	# Start Curses
+	# -----------------------------------------------
+	stdscr = curses.initscr()
+	curses.noecho()  # Don't print inputted characters
+	curses.curs_set(0)  # Hide cursor
+	curses.raw()  # Catch control characters
+	stdscr.keypad(True)   # 
 	
 	# Allow for color drawing
 	curses.start_color()
@@ -362,14 +416,22 @@ def main(stdscr):
 	curses.init_pair(1, 1, -1)
 	curses.init_pair(2, 2, -1)
 	curses.init_pair(3, 4, -1)
-	# Hide cursor
-	curses.curs_set(0)
-	# Catch control characters
-	curses.raw()
 	
 	
+	# Construct Celestial Sphere
+	celes = Celestial(args.time, args.loc, math.radians(args.wid), math.radians(args.hei))
+	catalog = loadCatalog('catalog.xml')  # Load Stellar Catalog
+	
+		
+	# Render & Event Loop
+	# -----------------------------------------------
 	running = True
-	while running:  # Render and Event loop
+	timeOffset = args.time - dt.datetime.utcnow()  # Calculate time offset from present
+	while running:
+		# Update Time and Recalculate Sky transform
+		if args.isSync:
+			celes.time = dt.datetime.utcnow() + timeOffset
+		
 		# Render to Window
 		celes.render(stdscr, catalog)
 		
@@ -397,7 +459,7 @@ def main(stdscr):
 			celes.height *= 1.1
 		elif key == ord('A') :  # Zoom Out Horizontally
 			celes.width *= 1.1
-		elif key == ord('S') :  # Zoom In Horizontally
+		elif key == ord('D') :  # Zoom In Horizontally
 			celes.width /= 1.1
 		elif key == ord('Q') :  # Zoom Out
 			celes.height *= 1.1
@@ -417,7 +479,12 @@ def main(stdscr):
 			celes.selectBy(1, isByLine=False)
 		elif key in list(map(ord, ['x', 'X', curses.ascii.ctrl('c'), curses.ascii.ctrl('z')])) :  # Quit
 			running = False
-
-curses.wrapper(main)
-
+	
+	
+	# End Curses
+	# -----------------------------------------------
+	curses.noraw()
+	stdscr.keypad(False)
+	curses.noecho()
+	curses.endwin()	
 
