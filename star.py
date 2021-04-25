@@ -123,10 +123,21 @@ def loadCatalog(source : str):
 			aliases = map(lambda al: al.text, child.iterfind('alias'))
 		
 		# Construct Star
-		st = Stellar(name, right_asc, decl, constell, aliases, appmag, absmag, prop_mt, rad_mt)
+		st = Stellar(name, right_asc, decl, constell, aliases, dist, appmag, absmag, prop_mt, rad_mt)
 		catalog.append(st)
 	
 	return catalog
+
+
+def findInCatalog(catalog, name):
+	""" Find Stellar object in catalog using name """
+	name = name.lower()  # Ignore case
+	for st in catalog :
+		if name == st.name.lower() or name in map(lambda a: a.lower(), st.aliases) :
+			return st
+	
+	return None
+
 
 
 class Stellar:
@@ -154,7 +165,8 @@ class Stellar:
 	def __init__(self,
 		name: str, ra: Tuple[int, int, float], dec: Tuple[int, int, float],
 		constell: str = None, aliases: List[str] = [],
-		appmag: float = 0, absmag: float = 0,
+		dist: float = None,
+		appmag: float = None, absmag: float = None,
 		prop_mt: Tuple[float, float] = (0, 0), rad_mt: float = 0
 	):
 		self.name = name
@@ -165,6 +177,7 @@ class Stellar:
 		self.decl = dec
 		# Convert ra and dec to degrees and create SpherePoint
 		self.point = SpherePoint(dec[0] + (dec[1] + dec[2] / 60) / 60, (ra[0] + (ra[1] + ra[2] / 60) / 60) * 15, isdeg=True)
+		self.dist = dist
 		
 		# Magnitude parameters
 		self.appmag = appmag

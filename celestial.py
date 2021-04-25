@@ -367,39 +367,142 @@ class Celestial:
 if __name__ == '__main__':
 	# Parse Command Line Arguments
 	# -----------------------------------------------
-	parser = argparse.ArgumentParser(description="")
+	parser = argparse.ArgumentParser(prog='orrery',
+		usage='orrery [-t DATETIME] [-l LAT,LONG] [-S | --sync] [-w DEGREES] [-h DEGREES]',
+		description="View stellar objects at different times and from different locations",
+		epilog=""
+	)
 	# Time that should be assumed for display
 	parser.add_argument('-t', '--time',
-		type=dt.datetime.fromisoformat,
-		default=dt.datetime.utcnow(),
-		metavar='DATETIME', dest='time',
+		type=dt.datetime.fromisoformat, default=dt.datetime.utcnow(),
+		metavar='YYYY-MM-DD[*hh[:mm][:ss[.fff]]]', dest='time',
 		help="Time to observe the sky at. Defaults to Now"
 	)
 	parser.add_argument('-l', '--location',
-		type=SpherePoint.parseLatLong,
-		default=SpherePoint(0, 0),
+		type=SpherePoint.parseLatLong, default=SpherePoint(0, 0),
 		metavar='LAT,LONG', dest='loc',
 		help="Latitude and Longitude (in degrees) of location to observe from. Defaults to 0N,0W"
 	)
 	parser.add_argument('-S', '--sync',
-		action='store_true',
-		dest='isSync',
+		action='store_true', dest='isSync',
 		help="Application will move time forward"
 	)
 	parser.add_argument('-W', '--width',
-		type=int,
-		default=20,
+		type=int, default=20,
 		metavar='DEGREES', dest='wid',
 		help="Angular width in degrees of the viewport"
 	)
 	parser.add_argument('-H', '--height',
-		type=int,
-		default=20,
+		type=int, default=20,
 		metavar='DEGREES', dest='hei',
 		help="Angular height in degrees of the viewport"
 	)
 	
+	subparsers = parser.add_subparsers(title="subcommands", metavar='', dest='cmd')
+	# Subparser for showing attributes of objects
+	show_parser = subparsers.add_parser('show',
+		usage='orrery [-t DATETIME] [-l LAT,LONG] show [-Cnrmdv | -a] <object> ...',
+		description="Show the attributes of objects",
+		help="Show the attributes of objects"
+	)
+	show_parser.add_argument('objects',
+		nargs='+',
+		help="Objects to display attributes for"
+	)
+	show_parser.add_argument('-C', '--constellation',
+		action='store_true', dest='showConstell',
+		help="Show the Constellation the Object(s) are in"
+	)
+	show_parser.add_argument('-n', '--aliases',
+		action='store_true', dest='showAliases',
+		help="Show the other names of the Object(s)"
+	)
+	show_parser.add_argument('-r', '--radec',
+		action='store_true', dest='showRADec',
+		help="Show the Right Ascension and Declination"
+	)
+	show_parser.add_argument('-m', '--magnitude',
+		action='store_true', dest='showMag',
+		help="Show Apparent and Absolute Magnitude"
+	)
+	show_parser.add_argument('-d', '--distance',
+		action='store_true', dest='showDist',
+		help="Show Distance to object"
+	)
+	show_parser.add_argument('-v', '--velocity',
+		action='store_true', dest='showMotion',
+		help="Show Radial Velocity as well as rate of change of Right Ascension and Declination"
+	)
+	show_parser.add_argument('-a', '--all',
+		action='store_true', dest='showAll',
+		help="Show all available attributes of the object"
+	)
+	
 	args = parser.parse_args()  # Get argument namespace
+	
+	
+	# Construct Celestial Sphere
+	celes = Celestial(args.time, args.loc, math.radians(args.wid), math.radians(args.hei))
+	catalog = loadCatalog('catalog.xml')  # Load Stellar Catalog
+	
+	
+	# Check for subcommand
+	if 'cmd' in args :
+		if args.cmd == 'show' :  # 'show' command
+			if args.showAll :  # Show all when `showAll`
+				args.showConstell = True
+				args.showAliases = True
+				args.showRADec = True
+				args.showMag = True
+				args.showDist = True
+				args.showMotion = True
+			
+			# Iterate through chosen objects
+			for name in args.objects :
+				st = findInCatalog(catalog, name)
+				if st is None :
+					print(f"Error: Could not find object '{name}' in catalog", file=sys.stderr)
+					print()
+					continue  # Go to next object
+				
+				# Print properties of object
+				print(st.name, end='  ')  # Print Name
+				if args.showConstell :  # Print Constellation
+					print('(' + st.constell + ')')
+				else:
+					print()
+				
+				if args.showAliases :  # Print Other Names
+					print('  |  '.join(st.aliases))
+				
+				# Print Altitude & Azimuth
+				pt = celes.sky(st.point)  # Get location in horizontal coordinates
+				print(f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % 360}d")  # Altitude & Azimuth in degrees
+				
+				if args.showRADec :  # Print Right Ascension and Declination
+					rah, ram, ras = st.right_asc  # Get Hours, Minutes, and Seconds of Right Ascension
+					dcd, dcm, dcs = st.decl  # Get Degrees, Minutes, and Seconds of Declination
+					dcsign = '-' if dcd < 0 else '+'  # Get sign of declination
+					dcd, dcm, dcs = abs(dcd), abs(dcm), abs(dcs)  # Remove sign from components
+					print(f"(RA, Dec):  {rah}h {ram}m {ras}s ,  {dcsign}{dcd}d {dcm}m {dcs}s")  # Right Ascension & Declination
+				
+				if args.showMag and st.appmag is not None :  # Print Apparent Magnitude
+					print(f"App Mag:", st.appmag)
+				
+				if args.showMag and st.absmag is not None :  # Print Absolute Magnitude
+					print("Abs Mag:", st.absmag)
+				
+				if args.showDist :  # Print Distance
+					print(f"Distance:", st.dist, "ly")
+				
+				if args.showMotion :  # Print Motion
+					print(f"Radial Motion: {st.radial_motion} km/s", end="     ")
+					print(f"Proper Motion (RA, Dec): {st.proper_motion[0]} mas/yr,  {st.proper_motion[1]} mas/yr")
+				
+				print()  # Newline before next object
+			
+			exit()  # Leave and don't call ncurses
+	
 	
 	
 	# Start Curses
@@ -417,10 +520,6 @@ if __name__ == '__main__':
 	curses.init_pair(2, 2, -1)
 	curses.init_pair(3, 4, -1)
 	
-	
-	# Construct Celestial Sphere
-	celes = Celestial(args.time, args.loc, math.radians(args.wid), math.radians(args.hei))
-	catalog = loadCatalog('catalog.xml')  # Load Stellar Catalog
 	
 		
 	# Render & Event Loop
