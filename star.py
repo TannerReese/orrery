@@ -107,7 +107,7 @@ def loadCatalog(source : str):
 			# Get Motion Parameters
 			mot = child.find('motion')
 			# Set defaults
-			prop_mt = [0, 0]
+			prop_mt = [None, None]
 			rad_mt = 0
 			if mot is not None :
 				if 'right-asc' in mot.attrib :

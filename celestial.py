@@ -32,6 +32,9 @@ def printCentered(win: 'curses.window', y: int, x: int, text: str, attr: int = 0
 	# Get window dimensions
 	height, width = win.getmaxyx()
 	
+	# win.addstr will error if a character is attempted to be drawn to the lower right hand corner
+	height, width = height - 1, width - 1
+	
 	# Move starting column to accomodate symbol
 	x -= len(text) // 2
 	# Print each character in text
@@ -40,7 +43,12 @@ def printCentered(win: 'curses.window', y: int, x: int, text: str, attr: int = 0
 		if 0 <= x + i < width and 0 <= y < height :
 			# curses.window.addch had a bug preventing the use of color
 			# curses.window.addstr had to be used to allow use of color
-			win.addstr(y, x + i, text[i], attr)
+			try:
+				win.addstr(y, x + i, text[i], attr)
+			except:
+				curses.endwin()
+				print(y, x, text[i], i, attr, height, width)
+				exit()
 			
 			isvis = True
 	
@@ -254,7 +262,7 @@ class Celestial:
 	
 	
 	
-	def drawHoriz(self, win: 'curses.window', pt: SpherePoint, text: str, attr: int = None) -> None:
+	def drawHoriz(self, win: 'curses.window', pt: SpherePoint, text: str, attr: int = 0) -> None:
 		"""
 		Draws `text` on curses window `win` assuming `pt` is in horizontal coordinates
 		
