@@ -4,6 +4,7 @@ import curses
 import curses.ascii
 import datetime as dt
 import sys
+import os
 import argparse
 
 from celestial import *
@@ -139,9 +140,9 @@ if __name__ == '__main__':
 	# Parse Command Line Arguments
 	# -----------------------------------------------
 	parser = argparse.ArgumentParser(prog='orrery',
-		usage='orrery [-t DATETIME] [-l LAT,LONG] [-S | --sync] [-w DEGREES] [-h DEGREES]',
+		usage='orrery [-t DATETIME] [-l LAT,LONG] [-S | --sync] [-i CATALOG ...] [-w DEGREES] [-h DEGREES]',
 		description="View stellar objects at different times and from different locations",
-		epilog=""
+		epilog="Along with any catalog files given with '-i' orrery will also load object information from '~/.orrery/*.xml' and '/usr/share/orrery/catalog.xml'"
 	)
 	# Time that should be assumed for display
 	parser.add_argument('-t', '--time',
@@ -158,6 +159,11 @@ if __name__ == '__main__':
 		action='store_true', dest='isSync',
 		help="Application will move time forward"
 	)
+	parser.add_argument('-i', '--input',
+		type=str, nargs='+', default=[],
+		metavar='CATALOG', dest='catalog',
+		help="XML file containing stellar object information formatted according to 'catalog.xsd'"
+	)
 	parser.add_argument('-W', '--width',
 		type=int, default=50,
 		metavar='DEGREES', dest='wid',
@@ -172,7 +178,7 @@ if __name__ == '__main__':
 	subparsers = parser.add_subparsers(title="subcommands", metavar='', dest='cmd')
 	# Subparser for showing attributes of objects
 	show_parser = subparsers.add_parser('show',
-		usage='orrery [-t DATETIME] [-l LAT,LONG] show [-Cnrmdv | -a] <object> ...',
+		usage='orrery [-t DATETIME] [-l LAT,LONG] [-i CATALOG ...] show [-Cnrmdv | -a] <object> ...',
 		description="Show the attributes of objects",
 		help="Show the attributes of objects"
 	)
@@ -214,7 +220,45 @@ if __name__ == '__main__':
 	
 	# Construct Celestial Sphere
 	celes = Celestial(args.time, args.loc, math.radians(args.wid), math.radians(args.hei))
-	catalog = loadCatalog('catalog.xml')  # Load Stellar Catalog
+	
+	
+	# Load Stellar Catalog(s)
+	# -----------------------
+	catalog = Catalog()
+	
+	# Try to parse requested catalogs
+	for path in args.catalog :
+		try:
+			catalog.load(path)
+		except FileNotFoundError:
+			print(f"Warning: Could not find catalog file '{path}'", file=sys.stderr)
+		except ValueError:
+			print(f"Warning: Catalog file '{path}' may contain invalid values", file=sys.stderr)
+	
+	# Check user's home folder for catalogs
+	paths = []
+	try:
+		userhome = os.path.expanduser('~/.orrery')
+		paths += filter(lambda path: path.endswith('.xml'), os.listdir(userhome))
+	except FileNotFoundError:
+		pass
+	
+	# Check application info for default catalog
+	paths.append('/usr/share/orrery/catalog.xml') 
+	paths.append('/usr/local/share/orrery/catalog.xml') 
+	
+	# Check paths
+	for p in paths:
+		try:
+			catalog.load(p)
+		except:
+			pass
+	
+	# Check that catalog contains some objects
+	if len(catalog) == 0 :
+		print(f"Error: No Object Information loaded in catalog file ; Try adding '-i' option", file=sys.stderr)
+		exit(1)
+	
 	
 	
 	# Check for subcommand

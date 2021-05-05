@@ -45,100 +45,6 @@ def parseAngle(angstr: str, isdms: bool = False):
 	return (sign * hd, sign * m, sign * s)
 
 
-def loadCatalog(source : str):
-	"""
-	Load list of objects from given xml file
-	
-	Args:
-	    source : str -- Name of XML file to read
-	
-	Returns:
-	    [Stellar] -- List of objects contained in file
-	"""
-	
-	tree = xml.parse(source)
-	root = tree.getroot()
-	
-	if root.tag != 'catalog' :  # Check type of root element
-		raise ValueError("Root of Catalog XML must be <catalog> ... </catalog>")
-	
-	catalog = []  # List of stars
-	for child in root :
-		# Parse star elements
-		if child.tag == 'star' :
-			if 'name' not in child.attrib :  # Check for required name field in star
-				raise ValueError("Star element must have 'name' attribute")
-			else:
-				name = child.attrib['name']
-			
-			# Get Constellation
-			if 'constellation' in child.attrib :
-				constell = child.attrib['constellation']
-			else:
-				constell = None
-			
-			# Get Location Parameters
-			loc = child.find('location')
-			if loc is None :
-				raise ValueError('Star element must have a location tag')
-			elif 'right-asc' not in loc.attrib or 'decl' not in loc.attrib :
-				raise ValueError("Star element must have a location tag with 'right-asc' and 'decl'")
-			else:
-				# Parse HMS and DMS format for angle
-				right_asc = parseAngle(loc.attrib['right-asc'])
-				decl = parseAngle(loc.attrib['decl'], isdms=True)
-				
-				if 'distance' in loc.attrib :
-					dist = float(loc.attrib['distance'])
-					if dist < 0 :
-						raise ValueError('"distance" attribute must be positive')
-				else:
-					dist = None
-			
-			# Get Magnitude Parameters
-			mag = child.find('magnitude')
-			if mag is not None :
-				appmag, absmag = None, None
-				if 'apparent' in mag.attrib :
-					appmag = float(mag.attrib['apparent'])
-				if 'absolute' in mag.attrib :
-					absmag = float(mag.attrib['absolute'])
-			
-			# Get Motion Parameters
-			mot = child.find('motion')
-			# Set defaults
-			prop_mt = [None, None]
-			rad_mt = 0
-			if mot is not None :
-				if 'right-asc' in mot.attrib :
-					prop_mt[0] = float(mot.attrib['right-asc'])
-				if 'decl' in mot.attrib :
-					prop_mt[1] = float(mot.attrib['decl'])
-				prop_mt = tuple(prop_mt)  # Convert [right-asc, decl] to tuple
-				
-				if 'radial' in mot.attrib :
-					rad_mt = float(mot.attrib['radial'])
-			
-			# Get Aliases
-			aliases = map(lambda al: al.text, child.iterfind('alias'))
-		
-		# Construct Star
-		st = Stellar(name, right_asc, decl, constell, aliases, dist, appmag, absmag, prop_mt, rad_mt)
-		catalog.append(st)
-	
-	return catalog
-
-
-def findInCatalog(catalog, name):
-	""" Find Stellar object in catalog using name """
-	name = name.lower()  # Ignore case
-	for st in catalog :
-		if name == st.name.lower() or name in map(lambda a: a.lower(), st.aliases) :
-			return st
-	
-	return None
-
-
 
 class Stellar:
 	"""
@@ -209,4 +115,152 @@ class Stellar:
 			return '`'
 		else:
 			return ['(#)', '(*)', '(")', '#', '*', '"'][int(self.appmag)]
+
+
+
+class Catalog:
+	"""
+	Store a set of Stellar Objects
+	
+	Attributes:
+	    objects : [Stellar] -- List of Objects
+	"""
+	
+	def __init__(self, objects=[]):
+		self.objects = objects
+	
+	def __iter__(self):
+		return iter(self.objects)
+	
+	def __len__(self):
+		return len(self.objects)
+	
+	def __getitem__(self, key):
+		""" Get Stellar Object with name or alias `key` """
+		
+		# Ignore key's case
+		key = key.lower()
+		
+		# Search list of objects for key
+		for st in self.objects :
+			if key == st.name.lower() or key in map(lambda a: a.lower(), st.aliases) :
+				return st
+		
+		raise IndexError(f"No Object with name or alias '{key}' found")
+	
+	def __delitem__(self, key):
+		""" Delete Stellar object with name or alias `key` if present """
+		
+		# Ignore key's case
+		key = key.lower()
+		
+		# Search list of objects for key
+		for i in range(len(self.objects)) :
+			st = self.objects[i]
+			if key == st.name.lower() or key in map(lambda a: a.lower(), st.aliases) :
+				del self.objects[i]  # Delete object at index if present
+				return
+		
+		raise IndexError(f"No Object with name or alias '{key}' found")
+	
+	def __contains__(self, key):
+		""" Check if any object has name or alias `key` """
+		key = key.lower()  # Ignore key's case
+		return any(map(lambda st: key == st.name.lower() or key in map(lambda a: a.lower(), st.aliases), self.objects))
+	
+	
+	def append(self, st: Stellar):
+		"""
+		Add Stellar object to Catalog if not already present
+		
+		Returns:
+		    bool -- True if `st` was added, False if `st` was already present
+		"""
+		
+		if self.__contains__(st.name) :
+			return False
+		else:
+			self.objects.append(st)
+			return True
+	
+	
+	
+	def load(self, source: str):
+		"""
+		Load list of objects from given xml file and adds them to `self.objects`
+		
+		Args:
+			source : str -- Name of XML file to read
+		"""
+		
+		tree = xml.parse(source)
+		root = tree.getroot()
+		
+		if root.tag != 'catalog' :  # Check type of root element
+			raise ValueError("Root of Catalog XML must be <catalog> ... </catalog>")
+		
+		for child in root :
+			# Parse star elements
+			if child.tag == 'star' :
+				if 'name' not in child.attrib :  # Check for required name field in star
+					raise ValueError("Star element must have 'name' attribute")
+				else:
+					name = child.attrib['name']
+				
+				# Get Constellation
+				if 'constellation' in child.attrib :
+					constell = child.attrib['constellation']
+				else:
+					constell = None
+				
+				# Get Location Parameters
+				loc = child.find('location')
+				if loc is None :
+					raise ValueError('Star element must have a location tag')
+				elif 'right-asc' not in loc.attrib or 'decl' not in loc.attrib :
+					raise ValueError("Star element must have a location tag with 'right-asc' and 'decl'")
+				else:
+					# Parse HMS and DMS format for angle
+					right_asc = parseAngle(loc.attrib['right-asc'])
+					decl = parseAngle(loc.attrib['decl'], isdms=True)
+					
+					if 'distance' in loc.attrib :
+						dist = float(loc.attrib['distance'])
+						if dist < 0 :
+							raise ValueError('"distance" attribute must be positive')
+					else:
+						dist = None
+				
+				# Get Magnitude Parameters
+				mag = child.find('magnitude')
+				if mag is not None :
+					appmag, absmag = None, None
+					if 'apparent' in mag.attrib :
+						appmag = float(mag.attrib['apparent'])
+					if 'absolute' in mag.attrib :
+						absmag = float(mag.attrib['absolute'])
+				
+				# Get Motion Parameters
+				mot = child.find('motion')
+				# Set defaults
+				prop_mt = [None, None]
+				rad_mt = 0
+				if mot is not None :
+					if 'right-asc' in mot.attrib :
+						prop_mt[0] = float(mot.attrib['right-asc'])
+					if 'decl' in mot.attrib :
+						prop_mt[1] = float(mot.attrib['decl'])
+					prop_mt = tuple(prop_mt)  # Convert [right-asc, decl] to tuple
+					
+					if 'radial' in mot.attrib :
+						rad_mt = float(mot.attrib['radial'])
+				
+				# Get Aliases
+				aliases = map(lambda al: al.text, child.iterfind('alias'))
+			
+			# Construct Star
+			st = Stellar(name, right_asc, decl, constell, aliases, dist, appmag, absmag, prop_mt, rad_mt)
+			self.append(st)
+
+
 
