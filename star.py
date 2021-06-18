@@ -1,49 +1,8 @@
 import xml.etree.ElementTree as xml
-import re
 from sphere import *
 from typing import Tuple, List
 
-# Compile Regular Expression for DMS / HMS angles
-_angleRE = re.compile('([+-]?)([0123]?\d{1,2})([hHdD])\s*([0-5]?\d)[mM]\s*([0-5]?\d(?:\.\d+)?)[sS]', re.IGNORECASE)
-
-def parseAngle(angstr: str, isdms: bool = False):
-	""" Parse Right Ascension string in Hour Minute Second or Degree Minute Second form """
-	m = _angleRE.match(angstr)
-	
-	# When string doesn't match
-	if m is None :
-		raise ValueError('String "' + angstr + '" does not match HMS or DMS format')
-	
-	# Check that first character is 'h' or 'H' and not 'd' or 'D'
-	if m.group(3).lower() != ('d' if isdms else 'h') :
-		raise ValueError('First value in HMS format must an hour')
-	
-	# Check for sign
-	sign = m.group(1)
-	if len(sign) > 0 :
-		if not isdms:
-			raise ValueError('HMS format is not signed')
-		else:
-			sign = 1 if sign == '+' else -1
-	else:
-		sign = 1
-	
-	# Extract and convert values
-	hd, m, s = int(m.group(2)), int(m.group(4)), float(m.group(5))
-	
-	# Check that values fall in appropriate ranges
-	if hd < 0 or (360 if isdms else 24) <= hd :
-		if isdms:
-			raise ValueError('Degrees must be between 0 and 359, inclusive')
-		else:
-			raise ValueError('Hours must be between 0 and 23, inclusive')
-	elif m < 0 or 60 <= m :
-		raise ValueError('Minutes must be between 0 and 59, inclusive')
-	elif s < 0 or 60 <= s :
-		raise ValueError('Seconds must be greater than or equal to 0 and less than 60')
-	
-	return (sign * hd, sign * m, sign * s)
-
+from utils import *
 
 
 class Stellar:
@@ -63,35 +22,36 @@ class Stellar:
 		appmag : float -- Apparent magnitude of the Object
 		absmag : float -- Absolute magnitude of the Object
 		
-		proper_motion : Tuple[float, float] -- Rate of apparent motion of the Object in each direction (Right-Ascension rate, Declination rate) in milliarcseconds per year
+		right_asc_motion : float -- Rate of apparent motion longitudinally in milliarcseconds per year
+		decl_motion : float -- Rate of apparent motion latitudinally in milliarcseconds per year
 		radial_motion : float -- Rate of approach or departure in kilometers per second
 	"""
 	
 	
-	def __init__(self,
-		name: str, ra: Tuple[int, int, float], dec: Tuple[int, int, float],
-		constell: str = None, aliases: List[str] = [],
-		dist: float = None,
-		appmag: float = None, absmag: float = None,
-		prop_mt: Tuple[float, float] = (0, 0), rad_mt: float = 0
-	):
-		self.name = name
-		self.constell = constell
-		self.aliases = list(aliases)
+	@fromXML('name', '@name', required=True)
+	@fromXML('right_asc', 'location/@right-asc', required=True, parser=lambda s: parseAngle(s, isdms=False))
+	@fromXML('decl', 'location/@decl', required=True, parser=lambda s: parseAngle(s, isdms=True))
+	
+	@fromXML('constell', '@constellation')
+	@fromXML('aliases', 'alias', multiple=True)
+	
+	@fromXML('dist', 'location/@distance', parser=float)
+	@fromXML('appmag', 'magnitude/@apparent', parser=float)
+	@fromXML('absmag', 'magnitude/@absolute', parser=float)
+	
+	@fromXML('right_asc_motion', 'motion/@right-asc', parser=float)
+	@fromXML('decl_motion', 'motion/@decl', parser=float)
+	@fromXML('radial_motion', 'motion/@radial', parser=float)
+	def __init__(self, **kwargs):
+		# Set attributes obtained from XML
+		for key, value in kwargs.items():
+			setattr(self, key, value)
 		
-		self.right_asc = ra
-		self.decl = dec
 		# Convert ra and dec to degrees and create SpherePoint
-		self.point = SpherePoint(dec[0] + (dec[1] + dec[2] / 60) / 60, (ra[0] + (ra[1] + ra[2] / 60) / 60) * 15, isdeg=True)
-		self.dist = dist
-		
-		# Magnitude parameters
-		self.appmag = appmag
-		self.absmag = absmag
-		
-		# Motion parameters
-		self.proper_motion = prop_mt
-		self.radial_motion = rad_mt
+		self.point = SpherePoint(
+			self.decl[0] + (self.decl[1] + self.decl[2] / 60) / 60,
+			(self.right_asc[0] + (self.right_asc[1] + self.right_asc[2] / 60) / 60) * 15,
+		isdeg=True)
 	
 	@property
 	def symbol(self):
@@ -202,65 +162,6 @@ class Catalog:
 		for child in root :
 			# Parse star elements
 			if child.tag == 'star' :
-				if 'name' not in child.attrib :  # Check for required name field in star
-					raise ValueError("Star element must have 'name' attribute")
-				else:
-					name = child.attrib['name']
-				
-				# Get Constellation
-				if 'constellation' in child.attrib :
-					constell = child.attrib['constellation']
-				else:
-					constell = None
-				
-				# Get Location Parameters
-				loc = child.find('location')
-				if loc is None :
-					raise ValueError('Star element must have a location tag')
-				elif 'right-asc' not in loc.attrib or 'decl' not in loc.attrib :
-					raise ValueError("Star element must have a location tag with 'right-asc' and 'decl'")
-				else:
-					# Parse HMS and DMS format for angle
-					right_asc = parseAngle(loc.attrib['right-asc'])
-					decl = parseAngle(loc.attrib['decl'], isdms=True)
-					
-					if 'distance' in loc.attrib :
-						dist = float(loc.attrib['distance'])
-						if dist < 0 :
-							raise ValueError('"distance" attribute must be positive')
-					else:
-						dist = None
-				
-				# Get Magnitude Parameters
-				mag = child.find('magnitude')
-				if mag is not None :
-					appmag, absmag = None, None
-					if 'apparent' in mag.attrib :
-						appmag = float(mag.attrib['apparent'])
-					if 'absolute' in mag.attrib :
-						absmag = float(mag.attrib['absolute'])
-				
-				# Get Motion Parameters
-				mot = child.find('motion')
-				# Set defaults
-				prop_mt = [None, None]
-				rad_mt = 0
-				if mot is not None :
-					if 'right-asc' in mot.attrib :
-						prop_mt[0] = float(mot.attrib['right-asc'])
-					if 'decl' in mot.attrib :
-						prop_mt[1] = float(mot.attrib['decl'])
-					prop_mt = tuple(prop_mt)  # Convert [right-asc, decl] to tuple
-					
-					if 'radial' in mot.attrib :
-						rad_mt = float(mot.attrib['radial'])
-				
-				# Get Aliases
-				aliases = map(lambda al: al.text, child.iterfind('alias'))
-			
-			# Construct Star
-			st = Stellar(name, right_asc, decl, constell, aliases, dist, appmag, absmag, prop_mt, rad_mt)
-			self.append(st)
-
+				self.append(Stellar(xml=child))
 
 
