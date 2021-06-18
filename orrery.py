@@ -12,6 +12,48 @@ from celestial import *
 from typing import List
 
 
+
+def loadCatalog(catalog_paths):
+	# Create catalog object
+	catalog = Catalog()
+	
+	# Try to parse requested catalogs
+	for path in catalog_paths :
+		try:
+			catalog.load(path)
+		except FileNotFoundError:
+			print(f"Warning: Could not find catalog file '{path}'", file=sys.stderr)
+		except ValueError:
+			print(f"Warning: Catalog file '{path}' may contain invalid values", file=sys.stderr)
+	
+	# Check user's home folder for catalogs
+	paths = []
+	try:
+		userhome = os.path.expanduser('~/.orrery')
+		paths += filter(lambda path: path.endswith('.xml'), os.listdir(userhome))
+	except FileNotFoundError:
+		pass
+	
+	# Check application info for default catalog
+	paths.append('/usr/share/orrery/catalog.xml') 
+	paths.append('/usr/local/share/orrery/catalog.xml') 
+	
+	# Check paths
+	for p in paths:
+		try:
+			catalog.load(p)
+		except FileNotFoundError:
+			pass
+	
+	# Check that catalog contains some objects
+	if len(catalog) == 0 :
+		print(f"Error: No Object Information loaded in catalog file ; Try adding '-i' option", file=sys.stderr)
+		exit(1)
+	
+	return catalog
+
+
+
 # Helper function to print strings to window centered on point
 def printCentered(win: 'curses.window', y: int, x: int, text: str, attr: int = 0):
 	"""
@@ -161,7 +203,7 @@ if __name__ == '__main__':
 	)
 	parser.add_argument('-i', '--input',
 		type=str, nargs='+', default=[],
-		metavar='CATALOG', dest='catalog',
+		metavar='CATALOG', dest='catalogs',
 		help="XML file containing stellar object information formatted according to 'catalog.xsd'"
 	)
 	parser.add_argument('-W', '--width',
@@ -221,44 +263,9 @@ if __name__ == '__main__':
 	# Construct Celestial Sphere
 	celes = Celestial(args.time, args.loc, math.radians(args.wid), math.radians(args.hei))
 	
-	
 	# Load Stellar Catalog(s)
 	# -----------------------
-	catalog = Catalog()
-	
-	# Try to parse requested catalogs
-	for path in args.catalog :
-		try:
-			catalog.load(path)
-		except FileNotFoundError:
-			print(f"Warning: Could not find catalog file '{path}'", file=sys.stderr)
-		except ValueError:
-			print(f"Warning: Catalog file '{path}' may contain invalid values", file=sys.stderr)
-	
-	# Check user's home folder for catalogs
-	paths = []
-	try:
-		userhome = os.path.expanduser('~/.orrery')
-		paths += filter(lambda path: path.endswith('.xml'), os.listdir(userhome))
-	except FileNotFoundError:
-		pass
-	
-	# Check application info for default catalog
-	paths.append('/usr/share/orrery/catalog.xml') 
-	paths.append('/usr/local/share/orrery/catalog.xml') 
-	
-	# Check paths
-	for p in paths:
-		try:
-			catalog.load(p)
-		except:
-			pass
-	
-	# Check that catalog contains some objects
-	if len(catalog) == 0 :
-		print(f"Error: No Object Information loaded in catalog file ; Try adding '-i' option", file=sys.stderr)
-		exit(1)
-	
+	catalog = loadCatalog(args.catalogs)
 	
 	
 	# Check for subcommand
