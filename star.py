@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as xml
-from sphere import *
+from sphere import Angle, SpherePoint, Rotation
 from typing import Tuple, List
 
-from utils import *
+from utils import fromXML
 
 
 class Stellar:
@@ -14,8 +14,6 @@ class Stellar:
 		constell : str -- Name of Constellation the Object is in
 		aliases : [str] -- List of other names for Object
 		
-	    right_asc : (int, int, float) -- Right Ascension represented as triple of (Hours, Minutes, Seconds)
-		decl : (int, int, float) -- Declination represented as triple of (Degrees, Minutes, Seconds)
 		dist : float -- Distance of the Object in light-years
 		point : SpherePoint -- Location of star on celestial sphere
 		
@@ -29,8 +27,8 @@ class Stellar:
 	
 	
 	@fromXML('name', '@name', required=True)
-	@fromXML('right_asc', 'location/@right-asc', required=True, parser=lambda s: parseAngle(s, isdms=False))
-	@fromXML('decl', 'location/@decl', required=True, parser=lambda s: parseAngle(s, isdms=True))
+	@fromXML('right_asc', 'location/@right-asc', required=True, parser=Angle)
+	@fromXML('decl', 'location/@decl', required=True, parser=Angle)
 	
 	@fromXML('constell', '@constellation')
 	@fromXML('aliases', 'alias', multiple=True)
@@ -43,15 +41,14 @@ class Stellar:
 	@fromXML('decl_motion', 'motion/@decl', parser=float)
 	@fromXML('radial_motion', 'motion/@radial', parser=float)
 	def __init__(self, **kwargs):
+		# Convert ra and dec to degrees and create SpherePoint
+		self.point = SpherePoint(kwargs['decl'], kwargs['right_asc'])
+		del kwargs['decl']
+		del kwargs['right_asc']
+		
 		# Set attributes obtained from XML
 		for key, value in kwargs.items():
 			setattr(self, key, value)
-		
-		# Convert ra and dec to degrees and create SpherePoint
-		self.point = SpherePoint(
-			self.decl[0] + (self.decl[1] + self.decl[2] / 60) / 60,
-			(self.right_asc[0] + (self.right_asc[1] + self.right_asc[2] / 60) / 60) * 15,
-		isdeg=True)
 	
 	@property
 	def symbol(self):
@@ -60,9 +57,9 @@ class Stellar:
 		
 		Output:
 			appmag < 0        -->  {@}
-		    0 <= appmag < 1   -->  (#)
+			0 <= appmag < 1   -->  (#)
 			1 <= appmag < 2   -->  (*)
-		    2 <= appmag < 3   -->  (")
+			2 <= appmag < 3   -->  (")
 			3 <= appmag < 4   -->   #
 			4 <= appmag < 5   -->   *
 			5 <= appmag < 6   -->   "
@@ -83,7 +80,7 @@ class Catalog:
 	Store a set of Stellar Objects
 	
 	Attributes:
-	    objects : [Stellar] -- List of Objects
+		objects : [Stellar] -- List of Objects
 	"""
 	
 	def __init__(self, objects=[]):
@@ -134,7 +131,7 @@ class Catalog:
 		Add Stellar object to Catalog if not already present
 		
 		Returns:
-		    bool -- True if `st` was added, False if `st` was already present
+			bool -- True if `st` was added, False if `st` was already present
 		"""
 		
 		if self.__contains__(st.name) :

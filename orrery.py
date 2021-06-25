@@ -160,11 +160,7 @@ def render(catalog: List[Stellar], win: 'curses.window', celes: Celestial, doCar
 		
 		pt = celes.sky(sel.point)  # Get location in horizontal coordinates
 		win.addstr(2, 0, f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % 360}d")  # Altitude & Azimuth in degrees
-		rah, ram, ras = sel.right_asc  # Get Hours, Minutes, and Seconds of Right Ascension
-		dcd, dcm, dcs = sel.decl  # Get Degrees, Minutes, and Seconds of Declination
-		dcsign = '-' if dcd < 0 else '+'  # Get sign of declination
-		dcd, dcm, dcs = abs(dcd), abs(dcm), abs(dcs)  # Remove sign from components
-		win.addstr(3, 0, f"(RA, Dec):  {rah}h {ram}m {ras}s ,  {dcsign}{dcd}d {dcm}m {dcs}s")  # Right Ascension & Declination
+		win.addstr(3, 0, "(RA, Dec):  %s ,  %s" % (sel.point.latAng.hmsstr, sel.point.longAng.dmsstr))  # Right Ascension & Declination
 	
 	# Draw Info about Time, Location, and View
 	rows, _ = win.getmaxyx()
