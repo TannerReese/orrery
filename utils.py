@@ -156,3 +156,78 @@ def fromXML(name: str, path: str,
 	return decorator
 
 
+
+class NamedMixin:
+	"""
+	An object which is can be identified by multiple different aliases
+	One of which is the primary (i.e. self.name)
+	"""
+	
+	def initNames(self, name, aliases):
+		"""
+		Set the name and aliases of a NamedMixin
+		Checking the values for validity
+		"""
+		
+		if type(name) != str:
+			raise TypeError("Name of NamedMixin must be a string")
+		elif any(map(lambda al: type(al) != str, aliases)):
+			raise TypeError("Aliases of NamedMixin must be a string")
+		
+		self.name = name
+		self.aliases = set(aliases)
+	
+	@property
+	def __lowered(self):
+		""" Get the set of names and aliases in lowercase """
+		return set(map(lambda al: al.lower(), self.aliases)) | {self.name.lower()}
+	
+	def __eq__(self, other):
+		""" NamedMixins are considered equal if they have any overlapping names """
+		
+		return isinstance(other, NamedMixin) and len(self.__lowered & other.__lowered) > 0
+	
+	def __neq__(self, other):
+		return not self.__eq__(other)
+	
+	def __contains__(self, name):
+		""" Check if this NamedMixin has this name as its name or alias ignoring case """
+		
+		if type(name) == str:
+			return name.lower() in self.__lowered
+		else:
+			# This behavior can be avoided in subclasses by
+			# Overriding this method and wrapping it in a try-except
+			raise TypeError("NamedMixin can only contain strings")
+	
+	def __str__(self):
+		return self.name
+	
+	def merge(self, other):
+		"""
+		Merge a single alias, list of aliases, or the name
+		and aliases of a NamedMixin into this NamedMixin
+		
+		Signature:
+			merge(alias: str) -- Add a single name to the set of aliases
+			merge(aliases: [str]) -- Add all of the names from an iterable
+			merge(named: NamedMixin) -- Add the name and aliases of another NamedMixin
+		"""
+		
+		if type(other) == str:
+			self.aliases.add(other)
+		elif isinstance(other, NamedMixin):
+			self.aliases.add(other.name)
+			self.aliases |= other.aliases
+		elif hasattr(other, '__iter__'):
+			other = set(other)
+			
+			# Make sure they are all strings
+			if any(map(lambda al: type(al) != str, other)):
+				raise TypeError('Only string elements can be merged into a NamedMixin')
+			
+			self.aliases |= other
+		else:
+			raise TypeError('')
+
+

@@ -108,12 +108,12 @@ CARDINALS = [
 	(SpherePoint(0, math.pi / 4), 'NW'), (SpherePoint(0, -3 * math.pi / 4), 'SE')
 ]
 
-def render(catalog: List[Stellar], win: 'curses.window', celes: Celestial, doCardinals: bool = True):
+def render(catalog: Catalog, win: 'curses.window', celes: Celestial, doCardinals: bool = True):
 	"""
 	Draws all stars in given catalog as well as the labels for directions
 	
 	Args:
-		catalog : [Stellar] -- List of objects to draw to screen
+		catalog : Catalog -- List of objects to draw to screen
 		win : ncurses.window -- Curses Window to Draw to
 		celes : Celestial -- Observation Viewpoint to use to locate objects
 		doCardinals : bool -- Whether labels for cardinal directions should be drawn
@@ -128,17 +128,17 @@ def render(catalog: List[Stellar], win: 'curses.window', celes: Celestial, doCar
 	celes.clearVisible()
 	
 	# Draw Objects
-	for st in catalog :
+	for obj in catalog :
 		# Get coordinates of object in window
-		x, y = celes.starToWindow(st)
+		x, y = celes.starToWindow(obj)
 		# Convert to line and column in curses window
 		y, x = int(y * height), int(x * width)
 		
 		# Check if `st` is selected
-		if st is celes.selected :
-			printCentered(win, y, x, st.symbol, curses.A_REVERSE)
+		if obj is celes.selected:
+			printCentered(win, y, x, obj.symbol, curses.A_REVERSE)
 		else:
-			printCentered(win, y, x, st.symbol)
+			printCentered(win, y, x, obj.symbol)
 	
 	# Draw directions
 	if doCardinals:
@@ -154,20 +154,14 @@ def render(catalog: List[Stellar], win: 'curses.window', celes: Celestial, doCar
 	# Draw Info about selected object
 	if celes.selected is not None :
 		sel = celes.selected
-		
-		win.addstr(0, 0, f"{sel.name}      {sel.constell}")  # Name & Constellation
-		win.addstr(1, 0, "  |  ".join(sel.aliases))  # Print other names
-		
-		pt = celes.sky(sel.point)  # Get location in horizontal coordinates
-		win.addstr(2, 0, f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % 360}d")  # Altitude & Azimuth in degrees
-		win.addstr(3, 0, "(RA, Dec):  %s ,  %s" % (sel.point.longAng.hmsstr, sel.point.latAng.dmsstr))  # Right Ascension & Declination
+		win.addstr(0, 0, celes.objectInfo(sel, fields={'constell', 'aliases', 'point'}))
 	
 	# Draw Info about Time, Location, and View
 	rows, _ = win.getmaxyx()
-	cnt = celes._view.inverse(SpherePoint(0, 0))  # Calculate center of Viewport
+	cnt = celes.center  # Calculate center of Viewport
 	win.addstr(rows - 3, 0, "Center of View (Alt, Az):  %.6fd ,  %.6fd" % (cnt.latd, (-cnt.longd) % 360))  # Center of Viewport
-	win.addstr(rows - 2, 0, "Location: " + celes._loc.geoformat())  # Location
-	win.addstr(rows - 1, 0, "Time: " + celes._time.isoformat())  # Time
+	win.addstr(rows - 2, 0, "Location: " + celes.location.geoformat())  # Location
+	win.addstr(rows - 1, 0, "Time: " + celes.time.isoformat())  # Time
 	
 	# Update Window to display new
 	win.refresh()
@@ -225,31 +219,31 @@ if __name__ == '__main__':
 		help="Objects to display attributes for"
 	)
 	show_parser.add_argument('-C', '--constellation',
-		action='store_true', dest='showConstell',
+		action='append_const', dest='show', const=['constell'],
 		help="Show the Constellation the Object(s) are in"
 	)
 	show_parser.add_argument('-n', '--aliases',
-		action='store_true', dest='showAliases',
+		action='append_const', dest='show', const=['aliases'],
 		help="Show the other names of the Object(s)"
 	)
 	show_parser.add_argument('-r', '--radec',
-		action='store_true', dest='showRADec',
+		action='append_const', dest='show', const=['point'],
 		help="Show the Right Ascension and Declination"
 	)
 	show_parser.add_argument('-m', '--magnitude',
-		action='store_true', dest='showMag',
+		action='append_const', dest='show', const=['appmag', 'absmag'],
 		help="Show Apparent and Absolute Magnitude"
 	)
 	show_parser.add_argument('-d', '--distance',
-		action='store_true', dest='showDist',
+		action='append_const', dest='show', const=['dist'],
 		help="Show Distance to object"
 	)
 	show_parser.add_argument('-v', '--velocity',
-		action='store_true', dest='showMotion',
+		action='append_const', dest='show', const=['radial_motion', 'right_asc_motion', 'decl_motion'],
 		help="Show Radial Velocity as well as rate of change of Right Ascension and Declination"
 	)
 	show_parser.add_argument('-a', '--all',
-		action='store_true', dest='showAll',
+		action='append_const', dest='show', const=[None],
 		help="Show all available attributes of the object"
 	)
 	
@@ -266,58 +260,28 @@ if __name__ == '__main__':
 	
 	# Check for subcommand
 	if 'cmd' in args :
-		if args.cmd == 'show' :  # 'show' command
-			if args.showAll :  # Show all when `showAll`
-				args.showConstell = True
-				args.showAliases = True
-				args.showRADec = True
-				args.showMag = True
-				args.showDist = True
-				args.showMotion = True
+		if args.cmd == 'show':  # 'show' command
+			# Flatten args.show list and make into a set
+			if args.show is None:
+				fields = {}
+			else:
+				fields = {f for fs in args.show for f in fs}
+			
+			# Show all if --all specified
+			if None in fields:
+				fields = None
 			
 			# Iterate through chosen objects
 			for name in args.objects:
 				try:
-					st = catalog[name]
-				except IndexError:
+					obj = catalog[name]
+				except KeyError:
 					print("\nError: Could not find object '%s' in catalog\n" % name, file=sys.stderr)
 					continue  # Go to next object
 				
-				# Print properties of object
-				print(st.name, end='  ')  # Print Name
-				if args.showConstell :  # Print Constellation
-					print('(' + st.constell + ')')
-				else:
-					print()
-				
-				if args.showAliases :  # Print Other Names
-					print('  |  '.join(st.aliases))
-				
-				# Print Altitude & Azimuth
-				pt = celes.sky(st.point)  # Get location in horizontal coordinates
-				print("(Alt, Az):  %fd ,  %fd" % (pt.latd, (-pt.longd) % 360))  # Altitude & Azimuth in degrees
-				
-				if args.showRADec:  # Print Right Ascension and Declination
-					print("(RA, Dec):  %s ,  %s" % (st.point.longAng.hmsstr, st.point.latAng.dmsstr))  # Right Ascension & Declination
-				
-				if args.showMag and hasattr(st, 'appmag') and st.appmag is not None:  # Print Apparent Magnitude
-					print(f"App Mag:", st.appmag)
-				
-				if args.showMag and hasattr(st, 'absmag') and st.absmag is not None:  # Print Absolute Magnitude
-					print("Abs Mag:", st.absmag)
-				
-				if args.showDist and hasattr(st, 'dist'):  # Print Distance
-					print("Distance:", st.dist, "ly")
-				
-				if args.showMotion:  # Print Motion
-					if hasattr(st, 'radial_motion'):
-						print("Radial Motion: %f km/s" % st.radial_motion, end="     ")
-					
-					if hasattr(st, 'right_asc_motion') and hasattr(st, 'decl_motion'):
-						print("Proper Motion (RA, Dec): %f mas/yr,  %f mas/yr" % (st.right_asc_motion, st.decl_motion))
-				
-				print()  # Newline before next object
-			
+				# Print specified fields of the object
+				print(celes.objectInfo(obj, fields))
+						
 			exit()  # Leave and don't call ncurses
 	
 	

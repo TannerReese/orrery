@@ -183,7 +183,7 @@ class Angle:
 	@property
 	def dms(self):
 		# Make sure degrees falls in the range -180 to 180
-		degrees = math.degrees(self.__radians) % 360 - 180
+		degrees = (math.degrees(self.__radians) + 180) % 360 - 180
 		return Angle.__splitBy60(degrees)
 	
 	@property

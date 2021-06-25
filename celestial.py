@@ -1,7 +1,7 @@
 import datetime as dt
 
 from sphere import *
-from star import *
+from star import Stellar, Catalog
 
 from typing import List
 
@@ -13,21 +13,21 @@ class Celestial:
 	To send points in the viewing port to a rectangular window, a local mercator projection is used
 	
 	Attributes:
-	    _view : Rotation -- Transformation from horizontal coordinates to the viewers perspective
+	    __view : Rotation -- Transformation from horizontal coordinates to the viewers perspective
 	    width : float -- Width (in radians) of the viewing port
 	    height : float -- Height (in radians) of the viewing port
 	    
-		_total : Rotation -- Transformation from equatorial coordinates to viewer perspective
-	    _sky : Rotation -- Store the transformation from equatorial coordinates to horizontal coordinates
-	    _time : dt.datetime -- Date and time of observation
-	    _loc : SpherePoint -- Location on Earth's surface of observation
+		__total : Rotation -- Transformation from equatorial coordinates to viewer perspective
+	    __sky : Rotation -- Store the transformation from equatorial coordinates to horizontal coordinates
+	    __time : dt.datetime -- Date and time of observation
+	    __loc : SpherePoint -- Location on Earth's surface of observation
 	    
-	    _byX : [(float, Stellar)] -- List of objects visible in window ordered by x-value. First element of tuple is x-value
-	    _byY : [(float, Stellar)] -- List of objects visible in window ordered by y-value. First element of tuple is y-value
+	    __byX : [(float, Stellar)] -- List of objects visible in window ordered by x-value. First element of tuple is x-value
+	    __byY : [(float, Stellar)] -- List of objects visible in window ordered by y-value. First element of tuple is y-value
 	    selected : Stellar -- Reference to currently selected object
 	
 	Properties:
-	    sky : Rotation -- Return _sky or calculate if necessary
+	    sky : Rotation -- Return __sky or calculate if necessary
 	    time : datetime -- Get private date and time
 	    location : SpherePoint -- Get private location
 	"""
@@ -35,18 +35,18 @@ class Celestial:
 	EPOCH_J2000 = dt.datetime(2000, 1, 1, hour=12)  # J2000 epoch on 12h, Jan 1st, 2000
 	
 	def __init__(self, time: dt.datetime, loc: SpherePoint, wid: float = math.radians(50), hei: float = math.radians(50)):
-		self._view = Rotation.identity()
+		self.__view = Rotation.identity()
 		self.width = wid
 		self.height = hei
 		
-		self._sky = None  # Save calculation for when it is needed
-		self._total = None
+		self.__sky = None  # Save calculation for when it is needed
+		self.__total = None
 		
-		self._time = time
-		self._loc = loc
+		self.__time = time
+		self.__loc = loc
 		
 		# Initialize selection system
-		self._byX, self._byY = [], []
+		self.__byX, self.__byY = [], []
 		self.selected = None
 	
 	
@@ -56,16 +56,16 @@ class Celestial:
 		Move view upwards by `angle` (in radians) from the perspective of the observer
 		Negative values of `angle` move down
 		"""
-		self._view = Rotation(0, 1, 0, angle) * self._view
-		self._total = None  # Mark _total for recalculation
+		self.__view = Rotation(0, 1, 0, angle) * self.__view
+		self.__total = None  # Mark __total for recalculation
 	
 	def lookRight(self, angle: float) -> None:
 		"""
 		Move view rightwards by `angle` (in radians) from the perspective of the observer
 		Negative values of `angle` move left
 		"""
-		self._view = Rotation(0, 0, 1, angle) * self._view
-		self._total = None  # Mark _total for recalculation
+		self.__view = Rotation(0, 0, 1, angle) * self.__view
+		self.__total = None  # Mark __total for recalculation
 	
 	def lookClock(self, angle: float) -> None:
 		"""
@@ -73,8 +73,8 @@ class Celestial:
 		Causes an apparent clockwise rotation of while maintaining the center of the view
 		Negative values of `angle` rotate counter-clockwise
 		"""
-		self._view = Rotation(-1, 0, 0, angle) * self._view
-		self._total = None  # Mark _total for recalculation
+		self.__view = Rotation(-1, 0, 0, angle) * self.__view
+		self.__total = None  # Mark __total for recalculation
 	
 	def lookTo(self, point: SpherePoint, prop: float = 1) -> None:
 		"""
@@ -86,10 +86,10 @@ class Celestial:
 			prop : float -- how much of the way to `point` the rotation goes
 		"""
 		# Calculate apparent position
-		appar = self._view(point)
+		appar = self.__view(point)
 		# Move into center of view
-		self._view = Rotation.moveTo(appar, SpherePoint(0, 0), prop) * self._view
-		self._total = None  # Mark _total for recalculation
+		self.__view = Rotation.moveTo(appar, SpherePoint(0, 0), prop) * self.__view
+		self.__total = None  # Mark __total for recalculation
 	
 	
 	
@@ -97,18 +97,18 @@ class Celestial:
 	
 	def selectBy(self, shift: int, isByX: bool):
 		"""
-		Select different element in _byline or _bycolm, moving selection
+		Select different element in __byline or __bycolm, moving selection
 		
 		Args:
-		    shift : int -- Amount by which to shift selection in _byX or _byY, +1 corresponds to the next element
-		    isByX : bool -- Whether _byline should be used or _bycolm
+		    shift : int -- Amount by which to shift selection in __byX or __byY, +1 corresponds to the next element
+		    isByX : bool -- Whether __byline should be used or __bycolm
 		"""
 		
 		# Get list to use for shifting
 		if isByX:
-			lst = self._byX
+			lst = self.__byX
 		else:
-			lst = self._byY
+			lst = self.__byY
 		
 		try:
 			# Find selected object
@@ -128,9 +128,9 @@ class Celestial:
 			self.selected = lst[ind % len(lst)][1]
 	
 	
-	def _addVisible(self, obj: Stellar, x: float, y: float):
+	def __addVisible(self, obj: Stellar, x: float, y: float):
 		"""
-		Add new visible object into _byX and _byY
+		Add new visible object into __byX and __byY
 		
 		Args:
 		    obj : Stellar -- Object to add to lists
@@ -138,43 +138,43 @@ class Celestial:
 			y : int -- Y-value of obj in window
 		"""
 		
-		# Find index in self._byX to put obj
+		# Find index in self.__byX to put obj
 		ind = 0
-		for x1, _ in self._byX :
+		for x1, _ in self.__byX :
 			if x1 >= x:
 				break
 			ind += 1
 		
 		# Insert element at index
-		self._byX.insert(ind, (x, obj))
+		self.__byX.insert(ind, (x, obj))
 		
-		# Find index in self._bycolm to put obj
+		# Find index in self.__bycolm to put obj
 		ind = 0
-		for y1, _ in self._byY :
+		for y1, _ in self.__byY :
 			if y1 >= y:
 				break
 			ind += 1
 		
 		# Insert element at index
-		self._byY.insert(ind, (y, obj))
+		self.__byY.insert(ind, (y, obj))
 	
 	def clearVisible(self):
 		"""
 		Clear lists of visible objects
 		"""
 		
-		self._byX = []
-		self._byY = []
+		self.__byX = []
+		self.__byY = []
 	
 	
 	
 	@property
 	def sky(self) -> Rotation:
-		if self._sky is None:
-			# Calculate sky transformation from _time and _loc
+		if self.__sky is None:
+			# Calculate sky transformation from __time and __loc
 			
 			# Calculate timedelta from epoch (J2000)
-			diff = self._time - Celestial.EPOCH_J2000
+			diff = self.__time - Celestial.EPOCH_J2000
 			
 			# ERA (Earth Rotation Angle) in radians
 			days = diff.total_seconds() / 86400
@@ -192,33 +192,105 @@ class Celestial:
 			tmrot = Rotation(0, 0, 1, -gmst)
 			
 			# Reorients sphere for location
-			reloc = Rotation(0, 1, 0, math.pi / 2 - self._loc.lat) * Rotation(0, 0, 1, math.pi - self._loc.long)
+			reloc = Rotation(0, 1, 0, math.pi / 2 - self.__loc.lat) * Rotation(0, 0, 1, math.pi - self.__loc.long)
 			
 			# Combine both corrections
-			self._sky = reloc * tmrot
+			self.__sky = reloc * tmrot
 		
-		return self._sky
+		return self.__sky
 	
 	@property
 	def total(self) -> Rotation:
-		if self._total is None or self._sky is None :
+		if self.__total is None or self.__sky is None :
 			# Reclaculate total transform if necessary
-			self._total = self._view * self.sky
+			self.__total = self.__view * self.sky
 		
-		return self._total
+		return self.__total
 	
 	@property
 	def time(self) -> dt.datetime:
-		return self._time
+		return self.__time
 	
 	@time.setter
 	def time(self, tm: dt.datetime):
-		self._time = tm
-		self._sky = None  # Invalidate sky transform
+		self.__time = tm
+		self.__sky = None  # Invalidate sky transform
 	
 	@property
 	def location(self) -> SpherePoint:
-		return self._loc
+		return self.__loc
+	
+	@property
+	def center(self) -> SpherePoint:
+		"""
+		Get the SpherePoint in horizontal coordinates
+		which corresponds to the center of the viewport
+		"""
+		return self.__view.inverse(SpherePoint(0, 0))
+	
+	
+	
+	def objectInfo(self, obj: Stellar, fields: List[str] = None) -> str:
+		"""
+		Create info string for this Stellar object
+		
+		Args:
+			fields : [str] -- List of field names that
+			    should be included in the info
+			    NOTE: If None then all fields are provided
+		
+		Returns:
+			str -- Informational String
+		"""
+		
+		# Ignore case on fields
+		if fields is not None:
+			fields = set(map(lambda f: f.lower(), fields))
+		
+		def doField(f):
+			""" Check whether a field should be printed """
+			return (fields is None or f in fields) and hasattr(obj, f) and getattr(obj, f) is not None
+		
+		# Accumulate string
+		info = obj.name  # Show name
+		# Show constellation name
+		if doField('constell'):
+			info += '    (' + obj.constell + ')'
+		info += '\n'
+		
+		if doField('aliases'):  # Print Other Names
+			info += '  |  '.join(obj.aliases) + '\n'
+		
+		# Print Altitude & Azimuth if Celestial is provided
+		pt = self.sky(obj.point)  # Get location in horizontal coordinates
+		info += "(Alt, Az):  %fd ,  %fd" % (pt.latd, (-pt.longd) % 360) + '\n'  # Altitude & Azimuth in degrees
+		
+		if doField('point'):  # Print Right Ascension and Declination
+			# Right Ascension & Declination
+			info += "(RA, Dec):  %s ,  %s" % (obj.point.longAng.hmsstr, obj.point.latAng.dmsstr) + '\n'
+		
+		# Show Magnitudes
+		isMag = False  # If at least one of the magnitudes is shown
+		if doField('appmag'):
+			info += "App Mag: %g    " % obj.appmag
+			isMag = True
+		if doField('absmag'):
+			info += "Abs Mag: %g" % obj.absmag
+			isMag = True
+		info += '\n' if isMag else ''
+		
+		# Show Distance
+		if doField('dist'):
+			info += "Distance: %s ly\n" % obj.dist
+		
+		# Show Motions
+		if doField('radial_motion'):
+			info += "Radial Motion: %f km/s\n" % obj.radial_motion
+			
+		if doField('right_asc_motion') and doField('decl_motion'):
+			info += "Proper Motion (RA, Dec): %f mas/yr,  %f mas/yr\n" % (obj.right_asc_motion, obj.decl_motion)
+		
+		return info
 	
 	
 	
@@ -235,7 +307,7 @@ class Celestial:
 		"""
 		
 		# Transform point into viewer's coordinates
-		point = self._view(pt)
+		point = self.__view(pt)
 		
 		# Convert to rectangular coordinates in window
 		return (0.5 - point.long / self.width, 0.5 - point.lat / self.height)
@@ -261,7 +333,7 @@ class Celestial:
 		
 		if 0 <= x < 1 and 0 <= y < 1 :
 			# Add to lists of visible objects if visible
-			self._addVisible(st, x, y)
+			self.__addVisible(st, x, y)
 		
 		return x, y
 

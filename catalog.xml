@@ -1,73 +1,73 @@
 <?xml version="1.0"?>
 <catalog>
 <!-- Orion -->
-<star name="Betelgeuse" constellation="Orion">
+<stellar name="Betelgeuse" constellation="Orion">
 	<location right-asc="05h 55m 10.30536s" decl="+07d 24m 25.4304s" distance="548"/>
 	<magnitude apparent="0.50" absolute="-5.85"/>
 	<motion radial="+21.91" right-asc="+26.42" decl="+9.60"/>
 	<alias>alpha Ori</alias>
 	<alias>HR 2061</alias>
 	<alias>HD 39801</alias>
-</star>
-<star name="Rigel" constellation="Orion">
+</stellar>
+<stellar name="Rigel" constellation="Orion">
 	<location right-asc="05h 14m 32.27210s" decl="-08d 12m 05.8981s" distance="860"/>
 	<magnitude apparent="0.13" absolute="-7.84"/>
 	<motion radial="+17.8" right-asc="+1.31" decl="+0.50"/>
 	<alias>beta Ori</alias>
 	<alias>HR 1713</alias>
 	<alias>HD 34085</alias>
-</star>
-<star name="Bellatrix" constellation="Orion">
+</stellar>
+<stellar name="Bellatrix" constellation="Orion">
 	<location right-asc="05h 25m 07.86325s" decl="+06d 20m 58.9318s" distance="250"/>
 	<magnitude apparent="1.64" absolute="-2.72"/>
 	<motion radial="+18.2" right-asc="-8.11" decl="-12.88"/>
 	<alias>gamma Ori</alias>
 	<alias>HR 1790</alias>
 	<alias>HD 35468</alias>
-</star>
-<star name="Alnilam" constellation="Orion">
+</stellar>
+<stellar name="Alnilam" constellation="Orion">
 	<location right-asc="05h 36m 12.81s" decl="-01d 12m 06.9s" distance="1342"/>
 	<magnitude apparent="1.69" absolute="-6.38"/>
 	<motion radial="+25.9" right-asc="+1.49" decl="-1.06"/>
 	<alias>epsilon Ori</alias>
 	<alias>HR 1903</alias>
 	<alias>HD 37128</alias>
-</star>
-<star name="Alnitak" constellation="Orion">
+</stellar>
+<stellar name="Alnitak" constellation="Orion">
 	<location right-asc="05h 40m 45.52666s" decl="-01d 56m 34.2649s" distance="1260"/>
 	<magnitude apparent="1.88" absolute="-6.0"/>
 	<motion radial="+18.5" right-asc="+3.19" decl="+2.03"/>
 	<alias>zeta Ori</alias>
 	<alias>HR 1948</alias>
 	<alias>HD 37742</alias>
-</star>
-<star name="Mintaka" constellation="Orion">
+</stellar>
+<stellar name="Mintaka" constellation="Orion">
 	<location right-asc="05h 32m 00.40s" decl="-00d 17m 56.7s" distance="1260"/>
 	<magnitude apparent="2.2" absolute="-5.8"/>
 	<motion radial="+18.5" right-asc="+0.64" decl="-0.69"/>
 	<alias>delta Ori</alias>
 	<alias>HR 1851</alias>
 	<alias>HD 36486</alias>
-</star>
-<star name="Saiph" constellation="Orion">
+</stellar>
+<stellar name="Saiph" constellation="Orion">
 	<location right-asc="05h 47m 45.38884s" decl="-09d 40m 10.5777s" distance="650"/>
 	<magnitude apparent="2.09" absolute="-4.65"/>
 	<motion radial="+20.5" right-asc="+1.46" decl="-1.28"/>
 	<alias>kappa Ori</alias>
 	<alias>HR 2004</alias>
 	<alias>HD 38771</alias>
-</star>
-<star name="Meissa" constellation="Orion">
+</stellar>
+<stellar name="Meissa" constellation="Orion">
 	<location right-asc="05h 35m 08.27761s" decl="+09d 56m 02.9611s" distance="1100"/>
 	<magnitude apparent="3.47" absolute="-4.25"/>
 	<motion radial="+18.5" right-asc="+0.64" decl="-0.69"/>
 	<alias>lambda Ori</alias>
 	<alias>HR 1879</alias>
 	<alias>HD 36861</alias>
-</star>
+</stellar>
 
 <!-- Ursa Major -->
-<star name="Alioth" constellation="Ursa Major">
+<stellar name="Alioth" constellation="Ursa Major">
 	<location right-asc="12h 54m 01.74959s" decl="+55d 57m 35.3627s" distance="82.6"/>
 	<magnitude apparent="1.77" absolute="-0.2"/>
 	<motion radial="-9.3" right-asc="111.91" decl="-8.24"/>
@@ -75,16 +75,16 @@
 	<alias>Aliath</alias>
 	<alias>HR 4905</alias>
 	<alias>HD 112185</alias>
-</star>
-<star name="Dubhe" constellation="Ursa Major">
+</stellar>
+<stellar name="Dubhe" constellation="Ursa Major">
 	<location right-asc="11h 03m 43.67152s" decl="+61d 45m 03.7249s" distance="123"/>
 	<magnitude apparent="1.79" absolute="-1.10"/>
 	<motion radial="-9" right-asc="-134.11" decl="-34.70"/>
 	<alias>alpha UMa</alias>
 	<alias>HR 4301</alias>
 	<alias>HD 95689</alias>
-</star>
-<star name="Alkaid" constellation="Ursa Major">
+</stellar>
+<stellar name="Alkaid" constellation="Ursa Major">
 	<location right-asc="13h 47m 32.43776s" decl="+49d 18m 47.7602s" distance="103.9"/>
 	<magnitude apparent="+1.86" absolute="-0.67"/>
 	<motion radial="-10.9" right-asc="-121.17" decl="-14.91"/>
@@ -92,8 +92,8 @@
 	<alias>Benetnasch</alias>
 	<alias>HR 5191</alias>
 	<alias>HD 120315</alias>
-</star>
-<star name="Mizar" constellation="Ursa Major">
+</stellar>
+<stellar name="Mizar" constellation="Ursa Major">
 	<location right-asc="13h 23m 55.54048s" decl="+54d 55m 31.2671s" distance="82.9"/>
 	<magnitude apparent="2.04" absolute="+0.32"/> <!-- Absolute for zeta1 UMa -->
 	<motion radial="-6.31" right-asc="119.01" decl="-25.97"/>
@@ -104,16 +104,16 @@
 	<!-- zeta2 UMa -->
 	<alias>HR 5055</alias>
 	<alias>HD 116657</alias>
-</star>
-	<star name="Alcor" constellation="Ursa Major">
+</stellar>
+	<stellar name="Alcor" constellation="Ursa Major">
 		<location right-asc="13h 25m 13.53783s" decl="+54d 59m 16.6548s" distance="81.7"/>
 		<magnitude apparent="3.99" absolute="+2.00"/>
 		<motion radial="-9.6"/>
 		<alias>g UMa</alias>
 		<alias>HR 5062</alias>
 		<alias>HD 116842</alias>
-	</star>
-<star name="Merak" constellation="Ursa Major">
+	</stellar>
+<stellar name="Merak" constellation="Ursa Major">
 	<location right-asc="11h 01m 50.47654s" decl="+56d 22m 56.7339s" distance="79.7"/>
 	<magnitude apparent="+2.37" absolute="+0.61"/>
 	<motion radial="-12.0" right-asc="81.43" decl="33.49"/>
@@ -121,8 +121,8 @@
 	<alias>Mirak</alias>
 	<alias>HR 4295</alias>
 	<alias>HD 95418</alias>
-</star>
-<star name="Phecda" constellation="Ursa Major">
+</stellar>
+<stellar name="Phecda" constellation="Ursa Major">
 	<location right-asc="11h 53m 49.84732s" decl="+53d 41m 41.1350s" distance="83.2"/>
 	<magnitude apparent="+2.438" absolute="+0.4"/>
 	<motion radial="-12.6" right-asc="107.68" decl="11.01"/>
@@ -130,8 +130,8 @@
 	<alias>Phad</alias>
 	<alias>HR 4554</alias>
 	<alias>HD 103287</alias>
-</star>
-<star name="Megrez" constellation="Ursa Major">
+</stellar>
+<stellar name="Megrez" constellation="Ursa Major">
 	<location right-asc="12h 15m 25.56063s" decl="57d 01m 57.4156s" distance="80.5"/>
 	<magnitude apparent="+3.312" absolute="+1.39"/>
 	<motion radial="-20.2" right-asc="104.11" decl="7.30"/>
@@ -139,19 +139,19 @@
 	<alias>Kaffa</alias>
 	<alias>HR 4660</alias>
 	<alias>HD 106591</alias>
-</star>
+</stellar>
 
 
 <!-- Ursa Minor -->
-<star name="Polaris" constellation="Ursa Minor">
+<stellar name="Polaris" constellation="Ursa Minor">
 	<location right-asc="02h 31m 48.704s" decl="+89d 15m 50.8s" distance="431"/>
 	<magnitude apparent="+1.98" absolute="-3.6"/>
 	<motion radial="-17"/>
 	<alias>alpha UMi</alias>
 	<alias>HR 424</alias>
 	<alias>HD 8890</alias>
-</star>
-<star name="Kochab" constellation="Ursa Minor">
+</stellar>
+<stellar name="Kochab" constellation="Ursa Minor">
 	<location right-asc="14h 50m 42.32580s" decl="+74d 09m 19.8142s" distance="130.9"/>
 	<magnitude apparent="2.08" absolute="-0.83"/>
 	<motion radial="+16.96" right-asc="-32.61" decl="11.42"/>
@@ -159,27 +159,27 @@
 	<alias>Kocab</alias>
 	<alias>HR 5563</alias>
 	<alias>HD 131873</alias>
-</star>
+</stellar>
 
 
 <!-- Lyra -->
-<star name="Vega" constellation="Lyra">
+<stellar name="Vega" constellation="Lyra">
 	<location right-asc="18h 36m 56.33635s" decl="+38d 47m 01.2802s" distance="25.04"/>
 	<magnitude apparent="+0.026" absolute="+0.582"/>
 	<motion radial="-13.9" right-asc="200.94" decl="286.23"/>
 	<alias>alpha Lyr</alias>
 	<alias>HR 7001</alias>
 	<alias>HD 172167</alias>
-</star>
-<star name="Sulafat" constellation="Lyra">
+</stellar>
+<stellar name="Sulafat" constellation="Lyra">
 	<location right-asc="18h 58m 56.62241s" decl="+32d 41m 22.4003s" distance="620"/>
 	<magnitude apparent="+3.261" absolute="-3.14"/>
 	<motion radial="-21.1" right-asc="-3.09" decl="1.11"/>
 	<alias>gamma Lyr</alias>
 	<alias>HR 7178</alias>
 	<alias>HD 176437</alias>
-</star>
-<star name="Sheliak" constellation="Lyra">
+</stellar>
+<stellar name="Sheliak" constellation="Lyra">
 	<location right-asc="18h 50m 04.79525s" decl="+33d 21m 45.6100s" distance="960"/>
 	<magnitude apparent="3.52" absolute="-3.82"/>
 	<motion radial="-19.2" right-asc="1.90" decl="-3.53"/>
@@ -189,52 +189,52 @@
 	<alias>HD 174638</alias>
 	<!-- beta Lyr B -->
 	<alias>HD 174664</alias>
-</star>
-<star name="delta2 Lyr" constellation="Lyra">
+</stellar>
+<stellar name="delta2 Lyr" constellation="Lyra">
 	<location right-asc="18h 54m 30.2838s" decl="+36d 53m 55.007s" distance="740"/>
 	<magnitude apparent="4.22" absolute="-3.3"/>
 	<motion radial="-25.55" right-asc="-7.36" decl="4.06"/>
 	<alias>delta Lyr</alias>
 	<alias>HR 7139</alias>
 	<alias>HD 175588</alias>
-</star>
-<star name="zeta1 Lyr" constellation="Lyra">
+</stellar>
+<stellar name="zeta1 Lyr" constellation="Lyra">
 	<location right-asc="18h 44m 46.35735s" decl="+37d 36m 18.4171s" distance="156"/>
 	<magnitude apparent="4.37" absolute="0.94"/>
 	<motion right-asc="29.04" decl="27.03"/>
 	<alias>zeta Lyr</alias>
 	<alias>HR 7056</alias>
 	<alias>HD 173648</alias>
-</star>
+</stellar>
 
 
 
 <!-- Canis Major -->
-<star name="Sirius" constellation="Canis Major">
+<stellar name="Sirius" constellation="Canis Major">
 	<location right-asc="06h 45m 08.917s" decl="-16d 42m 58.02s" distance="8.6"/>
 	<magnitude apparent="-1.47" absolute="+1.46"/>
 	<motion radial="-5.5" right-asc="-546.01" decl="-1223.07"/>
 	<alias>alpha CMa</alias>
 	<alias>HR 2491</alias>
 	<alias>HD 48915</alias>
-</star>
-<star name="Adhara" constellation="Canis Major">
+</stellar>
+<stellar name="Adhara" constellation="Canis Major">
 	<location right-asc="06h 58m 37.6s" decl="-28d 58m 19s" distance="430"/>
 	<magnitude apparent="1.50" absolute="-4.8"/>
 	<motion radial="+27.3" right-asc="2.63" decl="2.29"/>
 	<alias>epsilon CMa</alias>
 	<alias>HR 2618</alias>
 	<alias>HD 52089</alias>
-</star>
-<star name="Wezen" constellation="Canis Major">
+</stellar>
+<stellar name="Wezen" constellation="Canis Major">
 	<location right-asc="07h 08m 23.48608s" decl="-26d 23m 35.5474s" distance="1600"/>
 	<magnitude apparent="1.824" absolute="-6.86"/>
 	<motion radial="34.3" right-asc="-3.12" decl="+3.31"/>
 	<alias>delta CMa</alias>
 	<alias>HR 2693</alias>
 	<alias>HD 54605</alias>
-</star>
-<star name="Mirzam" constellation="Canis Major">
+</stellar>
+<stellar name="Mirzam" constellation="Canis Major">
 	<location right-asc="06h 22m 41.98535s" decl="-17d 57m 21.3073s" distance="490"/>
 	<magnitude apparent="1.985" absolute="-4.1"/>
 	<motion radial="+33.7" right-asc="-3.23" decl="-0.78"/>
@@ -242,43 +242,43 @@
 	<alias>Mirza</alias>
 	<alias>HR 2294</alias>
 	<alias>HD 44743</alias>
-</star>
-<star name="Aludra" constellation="Canis Major">
+</stellar>
+<stellar name="Aludra" constellation="Canis Major">
 	<location right-asc="07h 24m 05.70228s" decl="-29d 18m 11.1798s" distance="2000"/>
 	<magnitude apparent="2.450" absolute="-7.0"/>
 	<motion radial="41.1" right-asc="-4.14" decl="5.81"/>
 	<alias>eta CMa</alias>
 	<alias>HR 2827</alias>
 	<alias>HD 58350</alias>
-</star>
-<star name="Furud" constellation="Canis Major">
+</stellar>
+<stellar name="Furud" constellation="Canis Major">
 	<location right-asc="06h 20m 18.79204s" decl="-30d 03m 48.1202s" distance="362"/>
 	<magnitude apparent="+3.025" absolute="-2.21"/>
 	<motion radial="+32.2" right-asc="7.32" decl="4.03"/>
 	<alias>zeta CMa</alias>
 	<alias>HR 2282</alias>
 	<alias>HD 44402</alias>
-</star>
+</stellar>
 
 
 <!-- Carina -->
-<star name="Canopus" constellation="Carina">
+<stellar name="Canopus" constellation="Carina">
 	<location right-asc="06h 23m 57.10988s" decl="-52d 41m 44.3810s" distance="310"/>
 	<magnitude apparent="-0.74" absolute="-5.71"/>
 	<motion radial="20.3" right-asc="19.93" decl="23.24"/>
 	<alias>alpha Car</alias>
 	<alias>HR 2326</alias>
 	<alias>HD 45348</alias>
-</star>
+</stellar>
 
 
 <!-- Bootes -->
-<star name="Arcturus" constellation="Bootes">
+<stellar name="Arcturus" constellation="Bootes">
 	<location right-asc="14h 15m 39.7s" decl="+19d 10m 56s" distance="36.7"/>
 	<magnitude apparent="-0.05" absolute="-0.3"/>
 	<motion radial="-5.19" right-asc="-1093.45" decl="-1999.4"/>
 	<alias>alpha Boo</alias>
 	<alias>HR 5340</alias>
 	<alias>HD 124897</alias>
-</star>
+</stellar>
 </catalog>
