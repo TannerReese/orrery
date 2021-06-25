@@ -160,7 +160,7 @@ def render(catalog: List[Stellar], win: 'curses.window', celes: Celestial, doCar
 		
 		pt = celes.sky(sel.point)  # Get location in horizontal coordinates
 		win.addstr(2, 0, f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % 360}d")  # Altitude & Azimuth in degrees
-		win.addstr(3, 0, "(RA, Dec):  %s ,  %s" % (sel.point.latAng.hmsstr, sel.point.longAng.dmsstr))  # Right Ascension & Declination
+		win.addstr(3, 0, "(RA, Dec):  %s ,  %s" % (sel.point.longAng.hmsstr, sel.point.latAng.dmsstr))  # Right Ascension & Declination
 	
 	# Draw Info about Time, Location, and View
 	rows, _ = win.getmaxyx()
@@ -276,11 +276,11 @@ if __name__ == '__main__':
 				args.showMotion = True
 			
 			# Iterate through chosen objects
-			for name in args.objects :
-				st = findInCatalog(catalog, name)
-				if st is None :
-					print(f"Error: Could not find object '{name}' in catalog", file=sys.stderr)
-					print()
+			for name in args.objects:
+				try:
+					st = catalog[name]
+				except IndexError:
+					print("\nError: Could not find object '%s' in catalog\n" % name, file=sys.stderr)
 					continue  # Go to next object
 				
 				# Print properties of object
@@ -295,27 +295,26 @@ if __name__ == '__main__':
 				
 				# Print Altitude & Azimuth
 				pt = celes.sky(st.point)  # Get location in horizontal coordinates
-				print(f"(Alt, Az):  {pt.latd}d ,  {(-pt.longd) % 360}d")  # Altitude & Azimuth in degrees
+				print("(Alt, Az):  %fd ,  %fd" % (pt.latd, (-pt.longd) % 360))  # Altitude & Azimuth in degrees
 				
-				if args.showRADec :  # Print Right Ascension and Declination
-					rah, ram, ras = st.right_asc  # Get Hours, Minutes, and Seconds of Right Ascension
-					dcd, dcm, dcs = st.decl  # Get Degrees, Minutes, and Seconds of Declination
-					dcsign = '-' if dcd < 0 else '+'  # Get sign of declination
-					dcd, dcm, dcs = abs(dcd), abs(dcm), abs(dcs)  # Remove sign from components
-					print(f"(RA, Dec):  {rah}h {ram}m {ras}s ,  {dcsign}{dcd}d {dcm}m {dcs}s")  # Right Ascension & Declination
+				if args.showRADec:  # Print Right Ascension and Declination
+					print("(RA, Dec):  %s ,  %s" % (st.point.longAng.hmsstr, st.point.latAng.dmsstr))  # Right Ascension & Declination
 				
-				if args.showMag and st.appmag is not None :  # Print Apparent Magnitude
+				if args.showMag and hasattr(st, 'appmag') and st.appmag is not None:  # Print Apparent Magnitude
 					print(f"App Mag:", st.appmag)
 				
-				if args.showMag and st.absmag is not None :  # Print Absolute Magnitude
+				if args.showMag and hasattr(st, 'absmag') and st.absmag is not None:  # Print Absolute Magnitude
 					print("Abs Mag:", st.absmag)
 				
-				if args.showDist :  # Print Distance
-					print(f"Distance:", st.dist, "ly")
+				if args.showDist and hasattr(st, 'dist'):  # Print Distance
+					print("Distance:", st.dist, "ly")
 				
-				if args.showMotion :  # Print Motion
-					print(f"Radial Motion: {st.radial_motion} km/s", end="     ")
-					print(f"Proper Motion (RA, Dec): {st.proper_motion[0]} mas/yr,  {st.proper_motion[1]} mas/yr")
+				if args.showMotion:  # Print Motion
+					if hasattr(st, 'radial_motion'):
+						print("Radial Motion: %f km/s" % st.radial_motion, end="     ")
+					
+					if hasattr(st, 'right_asc_motion') and hasattr(st, 'decl_motion'):
+						print("Proper Motion (RA, Dec): %f mas/yr,  %f mas/yr" % (st.right_asc_motion, st.decl_motion))
 				
 				print()  # Newline before next object
 			
