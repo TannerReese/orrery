@@ -7,7 +7,7 @@ from typing import Tuple, Union
 Vector = Tuple[float, float, float]
 
 # Forward declaration of type
-SpherePoint = None
+Angle = None
 
 class Angle:
 	"""
@@ -17,6 +17,9 @@ class Angle:
 		__radians : float -- This angle in radians
 	
 	Properties:
+		complement : Angle -- Angle needed to add to get Right Angle (90 degrees)
+		supplement : Angle -- Angle needed to add to get Straight Angle (180 degrees)
+		
 		radians : float -- Get in radians
 		degrees : float -- Get in degrees
 		hms : (int, int, float) -- Get in HMS format
@@ -35,6 +38,8 @@ class Angle:
 		(d, m, s) tuple are all signed similarly
 		
 		Signature:
+			Angle(angle: Angle) -- Copy an angle
+			
 			Angle(radians: float) -- As radians
 			Angle(radianStr: str) -- String parsable as radians
 			    NOTE: May have optional 'r' / 'R' at end
@@ -86,6 +91,10 @@ class Angle:
 					# When string cannot be parsed as float
 					# We assume it is dmsStr or hmsStr and wait to address it
 					pass
+			
+			elif isinstance(args, Angle):
+				self.__radians = args.radians
+				return  # Leave
 				
 			elif not hasattr(args, '__iter__'):  # If not an iterable then it doesn't match any signature
 				# Angle((degrees: int, minutes: int, seconds: float))
@@ -141,11 +150,20 @@ class Angle:
 	
 	
 	@property
-	def radians(self):
+	def complement(self) -> Angle:
+		return Angle(math.pi / 2 - self.__radians)
+	
+	@property
+	def supplement(self) -> Angle:
+		return Angle(math.pi - self.__radians)
+	
+	
+	@property
+	def radians(self) -> float:
 		return self.__radians
 	
 	@property
-	def degrees(self):
+	def degrees(self) -> float:
 		return math.degrees(self.__radians)
 	
 	
@@ -266,9 +284,18 @@ class Angle:
 			degrees = hd + degrees / 60  # Add hours
 			degrees *= 15 # Convert to degrees (15 degrees per hour)
 		
-		# Convert to radians
-		return math.radians(degrees)
+		# Convert to radians and incorporate the sign
+		return sign * math.radians(degrees)
 
+# Positive Right Angle
+Angle.POS_RIGHT = Angle(90, isdeg=True)
+# Negative Right Angle
+Angle.NEG_RIGHT = Angle(-90, isdeg=True)
+
+
+
+# Forward declaration of type
+SpherePoint = None
 
 class SpherePoint:
 	"""
@@ -293,6 +320,7 @@ class SpherePoint:
 		longAng : Angle -- getter for longitude as Angle object
 		vector : Vector -- getter for unit vector
 	"""
+	
 	
 	def __init__(self, *args, isdeg: bool = False):
 		"""
@@ -394,7 +422,7 @@ class SpherePoint:
 			lngS = lngS[:-1]  # Remove last character
 		
 		# Parse Latitude & Longitude angle
-		lat, lng = Angle(latS), Angle(lngS)
+		lat, lng = Angle(latS, isdeg=True), Angle(lngS, isdeg=True)
 		
 		return SpherePoint(lat * latSign, lng * lngSign, isdeg=True)
 	
@@ -488,12 +516,16 @@ class Rotation:
 	def __init__(self, *args, mag2 : float = None):
 		"""
 		Create Rotation from Rodrigues vector, Axis-Angle, or SpherePoint and Angle
+		Angles are provided as Angle objects or floats interpreted as radians
 		
 		Signature:
 			Rotation((a, b, c), (d, e, f), (g, h, i)) -- rows of rotation matrix as tuples
 			Rotation((x, y, z), angle) -- Axis as tuple with Angle
 			Rotation(x, y, z, angle) -- Axis as components with Angle
 			Rotation(pt : SpherePoint, angle) -- SpherePoint to use as Axis with Angle
+		
+		Args:
+			mag2 : float -- The square of the magnitude to save calculations
 		"""
 		
 		# Set magnitude squared to be potentially reclaculated later
@@ -532,6 +564,10 @@ class Rotation:
 		# Ensure that axis vector is of correct dimension
 		if self.__axis is not None and len(self.__axis) != 3 :
 			raise ValueError('Axis vector of Rotation must have three components')
+		
+		# Convert __ang to float of radians if not converted
+		if isinstance(self.__ang, Angle):
+			self.__ang = self.__ang.radians
 		
 		# Convert Axis-Angle to Rotation Matrix
 		if self.__mat is None :
@@ -578,7 +614,7 @@ class Rotation:
 		""" Raises ValueError when self.__mat is not an orthogonal matrix """
 		
 		# Check normality (unit-length)
-		if not all(map(lambda r: math.isclose(1, Rotation.__dot(r, r)), self.__mat)) :
+		if not all(math.isclose(1, Rotation.__dot(r, r)) for r in self.__mat) :
 			raise ValueError('Rows of Rotation Matrix must be unit-length')
 		
 		# Check orthogonality

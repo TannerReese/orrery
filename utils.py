@@ -62,13 +62,18 @@ def xpath(elem: Element, path: str) -> List[str]:
 
 T = TypeVar('T')
 def fromXML(name: str, path: str,
-		required: bool = False, multiple: bool = False, parser: Callable[[str], Any] = None
+		required: bool = False, multiple: bool = False,
+		parser: Callable[[str], Any] = None, default: Any = None
 	) -> Callable[[Callable[..., T]], Callable[[Element], T]]:
 	"""
 	Creates a decorator which adds an argument to parse out the given XML element.
 	This decorator constructor is intended to be used to multiple times on a given function.
 	Each instance adds another argument that will be extracted from the XML element and given to the function.
+	If not present then either [] or `default` will be provided depending on if multiple is present.
+	
 	The decorated function will take an XML element as a keyword argument named `xml`
+	All arguments to method besides `xml` will be passed through
+	Any that overlap with those produced by `xml` will overwrite the value provided by the `xml`
 	
 	Usage:
 		import xml.etree.ElementTree as ET
@@ -113,19 +118,24 @@ def fromXML(name: str, path: str,
 	
 	def decorator(func):
 		# Only wrap `func` if it hasn't already been wrapped by fromXML
-		if hasattr(func, '_fromXML'):
-			func._fromXML[name] = (path, required, multiple, parser)
+		if hasattr(func, '__fromXML'):
+			func.__fromXML[name] = (path, required, multiple, parser, default)
 			return func
 		
 		# Wrapped function takes an XML element
-		argparsers = {name: (path, required, multiple, parser)}
+		argparsers = {name: (path, required, multiple, parser, default)}
 		@wraps(func)
 		def wrapped(*args, **kwargs):
-			# Get the xml element
-			elem = kwargs['xml']
-			del kwargs['xml']
+			if 'xml' in kwargs:
+				# Get the xml element
+				elem = kwargs['xml']
+				del kwargs['xml']
+			else:
+				# Otherwise nothing to process
+				return func(*args, **kwargs)
 			
-			for name, (path, required, multiple, parser) in argparsers.items():
+			new_kwargs = {}
+			for name, (path, required, multiple, parser, default) in argparsers.items():
 				contents = xpath(elem, path)
 				
 				# If the value is required but not present error
@@ -143,17 +153,23 @@ def fromXML(name: str, path: str,
 					if parser is not None:
 						contents = parser(contents)
 				else:
-					continue  # Don't set any kwargs since value is missing
+					contents = default  # Set new_kwargs[name] with default since value is missing
 				
-				kwargs[name] = contents
+				new_kwargs[name] = contents
 			
-			return func(*args, **kwargs)
+			# Update the new_kwargs with the old kwargs
+			# This ensures that any keyword arguments passed to the wrapped
+			#    function will overwrite those extracted from the XML
+			new_kwargs.update(kwargs)
+			
+			return func(*args, **new_kwargs)
 		
 		# Add parsers to function
-		wrapped._fromXML = argparsers
+		wrapped.__fromXML = argparsers
 		return wrapped
 	
 	return decorator
+
 
 
 
@@ -171,7 +187,7 @@ class NamedMixin:
 		
 		if type(name) != str:
 			raise TypeError("Name of NamedMixin must be a string")
-		elif any(map(lambda al: type(al) != str, aliases)):
+		elif any(type(al) != str for al in aliases):
 			raise TypeError("Aliases of NamedMixin must be a string")
 		
 		self.name = name
@@ -180,7 +196,7 @@ class NamedMixin:
 	@property
 	def __lowered(self):
 		""" Get the set of names and aliases in lowercase """
-		return set(map(lambda al: al.lower(), self.aliases)) | {self.name.lower()}
+		return {al.lower() for al in self.aliases} | {self.name.lower()}
 	
 	def __eq__(self, other):
 		""" NamedMixins are considered equal if they have any overlapping names """
@@ -223,7 +239,7 @@ class NamedMixin:
 			other = set(other)
 			
 			# Make sure they are all strings
-			if any(map(lambda al: type(al) != str, other)):
+			if any(type(al) != str for al in other):
 				raise TypeError('Only string elements can be merged into a NamedMixin')
 			
 			self.aliases |= other

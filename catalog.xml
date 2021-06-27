@@ -1,5 +1,85 @@
 <?xml version="1.0"?>
 <catalog>
+
+<!-- Orbiter Objects inside Solar System -->
+<!-- NOTE: J2000 epoch is assumed if no epoch is provided in <point epoch="EPOCH" ... /> -->
+<body name="Sun" type="sun">
+	<orbit eccentricity="0" semimajor="0"
+		inclination="0" longitude-ascending="0" argument-periapsis="0">
+		<point mean-anomaly="0"/>
+	</orbit>
+	<physical mass="1.9885e30" mean-radius="6.957e5" density="1.408"/>
+</body>
+
+<!-- Inner Planets -->
+<body name="Mercury" type="planet" symbol="[H]" parent="Sun">
+	<orbit eccentricity="0.205630" semimajor="5.7909050e7"
+		inclination="7.005" longitude-ascending="48.331" argument-periapsis="29.124">
+		<point mean-anomaly="174.796"/>
+	</orbit>
+	<physical mass="3.3011e23" mean-radius="2.4397e3" density="5.427"/>
+</body>
+
+<body name="Venus" type="planet" symbol="[V]" parent="Sun">
+	<orbit eccentricity="0.006772" semimajor="108.208000e6"
+		inclination="3.39458" longitude-ascending="76.680" argument-periapsis="54.884">
+		<point mean-anomaly="50.115"/>
+	</orbit>
+	<physical mass="4.8675e24" mean-radius="6.0518e3" density="5.243"/>
+</body>
+<body name="Earth" type="planet" symbol="" parent="Sun">
+	<orbit eccentricity="0.0167086" semimajor="149.598023e6"
+		inclination="0" longitude-ascending="-11.26064" argument-periapsis="114.20783">
+		<point mean-anomaly="-2.48284"/>
+	</orbit>
+	<rotation period="86164.0905">
+		<pole right-asc="18h 0m 0s" decl="90d 0m 0s"/>
+		<point meridian="280.46061837504" epoch="2000-01-01T12:00:00"/>
+	</rotation>
+	<physical mass="5.97237e24" mean-radius="6.371e3" density="5.514"/>
+</body>
+<body name="Mars" type="planet" symbol="[M]" parent="Sun">
+	<orbit eccentricity="0.0934" semimajor="227.939200e6"
+		inclination="1.85061" longitude-ascending="49.558" argument-periapsis="286.502">
+		<point mean-anomaly="19.41248" epoch="2000-01-01T12:00:00"/>
+	</orbit>
+	<physical mass="6.4171e23" mean-radius="3.3895e3" density="3.9335"/>
+</body>
+
+<!-- Gas Giants -->
+<body name="Jupiter" type="planet" symbol="[J]" parent="Sun">
+	<orbit eccentricity="0.0489" semimajor="778.57e6" period="374.3356896e6"
+		inclination="1.303" longitude-ascending="100.464" argument-periapsis="273.867">
+		<point mean-anomaly="20.060" epoch="2000-01-01T12:00:00"/>
+	</orbit>
+	<physical mass="1.8982e27" mean-radius="69.911e3" density="1.326"/>
+</body>
+<body name="Saturn" type="planet" symbol="[S]" parent="Sun">
+	<orbit eccentricity="0.0565" semimajor="1433.53e6"
+		inclination="2.485" longitude-ascending="113.665" argument-periapsis="339.392">
+		<point mean-anomaly="317.020" epoch="2000-01-01T12:00:00"/>
+	</orbit>
+	<physical mass="5.6834e26" mean-radius="58.232e3" density="0.687"/>
+</body>
+<body name="Uranus" type="planet" symbol="[U]" parent="Sun">
+	<orbit eccentricity="0.046381" semimajor="2875.04e6"
+		inclination="0.773" longitude-ascending="74.006" argument-periapsis="96.998857">
+		<point mean-anomaly="142.238600" epoch="2000-01-01T12:00:00"/>
+	</orbit>
+	<physical mass="8.6810e25" mean-radius="25.362e3" density="1.27"/>
+</body>
+<body name="Neptune" type="planet" symbol="[N]" parent="Sun">
+	<orbit eccentricity="0.008678" semimajor="4500e6"
+		inclination="1.767975" longitude-ascending="131.784" argument-periapsis="276.336">
+		<point mean-anomaly="256.228" epoch="2000-01-01T12:00:00"/>
+	</orbit>
+	<physical mass="1.02413e26" mean-radius="24.764e3" density="1.638"/>
+</body>
+
+
+
+
+<!-- Stellar Objects outside Solar System -->
 <!-- Orion -->
 <stellar name="Betelgeuse" constellation="Orion">
 	<location right-asc="05h 55m 10.30536s" decl="+07d 24m 25.4304s" distance="548"/>
@@ -281,4 +361,5 @@
 	<alias>HR 5340</alias>
 	<alias>HD 124897</alias>
 </stellar>
+
 </catalog>

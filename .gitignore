@@ -9,6 +9,9 @@ __pycache__/
 # Vim Swap files
 .*.sw*
 
+# PDF resources regarding astrometry
+*.pdf
+
 # Distribution / packaging
 .Python
 build/

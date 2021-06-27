@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import math
 import curses
 import curses.ascii
 import datetime as dt
@@ -7,7 +8,9 @@ import sys
 import os
 import argparse
 
-from celestial import *
+from sphere import SpherePoint
+from observer import Observer
+from objects import Catalog
 
 from typing import List
 
@@ -108,14 +111,14 @@ CARDINALS = [
 	(SpherePoint(0, math.pi / 4), 'NW'), (SpherePoint(0, -3 * math.pi / 4), 'SE')
 ]
 
-def render(catalog: Catalog, win: 'curses.window', celes: Celestial, doCardinals: bool = True):
+def render(catalog: Catalog, win: 'curses.window', obsrv: Observer, doCardinals: bool = True):
 	"""
 	Draws all stars in given catalog as well as the labels for directions
 	
 	Args:
 		catalog : Catalog -- List of objects to draw to screen
 		win : ncurses.window -- Curses Window to Draw to
-		celes : Celestial -- Observation Viewpoint to use to locate objects
+		obsrv : Observer -- Observation Viewpoint to use to locate objects
 		doCardinals : bool -- Whether labels for cardinal directions should be drawn
 	"""
 	
@@ -125,17 +128,17 @@ def render(catalog: Catalog, win: 'curses.window', celes: Celestial, doCardinals
 	height, width = win.getmaxyx()
 	
 	# Clear list of visible objects
-	celes.clearVisible()
+	obsrv.clearVisible()
 	
 	# Draw Objects
 	for obj in catalog :
 		# Get coordinates of object in window
-		x, y = celes.starToWindow(obj)
+		x, y = obsrv.objToWindow(obj)
 		# Convert to line and column in curses window
 		y, x = int(y * height), int(x * width)
 		
 		# Check if `st` is selected
-		if obj is celes.selected:
+		if obj is obsrv.selected:
 			printCentered(win, y, x, obj.symbol, curses.A_REVERSE)
 		else:
 			printCentered(win, y, x, obj.symbol)
@@ -144,7 +147,7 @@ def render(catalog: Catalog, win: 'curses.window', celes: Celestial, doCardinals
 	if doCardinals:
 		for pt, lbl in CARDINALS :
 			# Get coordinates of label
-			x, y = celes.horizToWindow(pt)
+			x, y = obsrv.horizToWindow(pt)
 			# Convert to line and column in curses window
 			y, x = int(y * height), int(x * width)
 			
@@ -152,16 +155,18 @@ def render(catalog: Catalog, win: 'curses.window', celes: Celestial, doCardinals
 			printCentered(win, y, x, lbl, curses.A_UNDERLINE)
 	
 	# Draw Info about selected object
-	if celes.selected is not None :
-		sel = celes.selected
-		win.addstr(0, 0, celes.objectInfo(sel, fields={'constell', 'aliases', 'point'}))
+	if obsrv.selected is not None :
+		sel = obsrv.selected
+		lines = sel.__str__(observer=obsrv, fields={'constell', 'aliases', 'point', 'altaz', 'period'}).split('\n')
+		for i in range(len(lines)):
+			win.addstr(i, 0, lines[i])
 	
 	# Draw Info about Time, Location, and View
 	rows, _ = win.getmaxyx()
-	cnt = celes.center  # Calculate center of Viewport
+	cnt = obsrv.center  # Calculate center of Viewport
 	win.addstr(rows - 3, 0, "Center of View (Alt, Az):  %.6fd ,  %.6fd" % (cnt.latd, (-cnt.longd) % 360))  # Center of Viewport
-	win.addstr(rows - 2, 0, "Location: " + celes.location.geoformat())  # Location
-	win.addstr(rows - 1, 0, "Time: " + celes.time.isoformat())  # Time
+	win.addstr(rows - 2, 0, "Location: " + obsrv.location.geoformat())  # Location
+	win.addstr(rows - 1, 0, "Time: " + obsrv.time.isoformat())  # Time
 	
 	# Update Window to display new
 	win.refresh()
@@ -230,7 +235,11 @@ if __name__ == '__main__':
 		action='append_const', dest='show', const=['point'],
 		help="Show the Right Ascension and Declination"
 	)
-	show_parser.add_argument('-m', '--magnitude',
+	show_parser.add_argument('-m', '--mass',
+		action='append_const', dest='show', const=['mass'],
+		help="Show Mass of the object in Kilograms"
+	)
+	show_parser.add_argument('-M', '--magnitude',
 		action='append_const', dest='show', const=['appmag', 'absmag'],
 		help="Show Apparent and Absolute Magnitude"
 	)
@@ -242,6 +251,10 @@ if __name__ == '__main__':
 		action='append_const', dest='show', const=['radial_motion', 'right_asc_motion', 'decl_motion'],
 		help="Show Radial Velocity as well as rate of change of Right Ascension and Declination"
 	)
+	show_parser.add_argument('-O', '--orbit',
+		action='append_const', dest='show', const=['eccen', 'semimajor', 'inclin', 'long_asc', 'arg_peri'],
+		help="Show Orbital Parameters of any orbiting body"
+	)
 	show_parser.add_argument('-a', '--all',
 		action='append_const', dest='show', const=[None],
 		help="Show all available attributes of the object"
@@ -249,13 +262,16 @@ if __name__ == '__main__':
 	
 	args = parser.parse_args()  # Get argument namespace
 	
-	
-	# Construct Celestial Sphere
-	celes = Celestial(args.time, args.loc, math.radians(args.wid), math.radians(args.hei))
-	
+
 	# Load Stellar Catalog(s)
 	# -----------------------
 	catalog = loadCatalog(args.catalogs)
+	
+	# Construct Celestial Sphere
+	obsrv = Observer(
+		args.time, args.loc, catalog['Earth'],
+		math.radians(args.wid), math.radians(args.hei)
+	)
 	
 	
 	# Check for subcommand
@@ -263,9 +279,12 @@ if __name__ == '__main__':
 		if args.cmd == 'show':  # 'show' command
 			# Flatten args.show list and make into a set
 			if args.show is None:
-				fields = {}
+				fields = set()
 			else:
 				fields = {f for fs in args.show for f in fs}
+			
+			# Add default fields to always show
+			fields |= {'constell', 'parent', 'aliases', 'point', 'altaz'}
 			
 			# Show all if --all specified
 			if None in fields:
@@ -280,8 +299,8 @@ if __name__ == '__main__':
 					continue  # Go to next object
 				
 				# Print specified fields of the object
-				print(celes.objectInfo(obj, fields))
-						
+				print(obj.__str__(observer=obsrv, fields=fields))
+			
 			exit()  # Leave and don't call ncurses
 	
 	
@@ -309,54 +328,53 @@ if __name__ == '__main__':
 	timeOffset = args.time - dt.datetime.utcnow()  # Calculate time offset from present
 	while running:
 		# Update Time and Recalculate Sky transform
-		if args.isSync:
-			celes.time = dt.datetime.utcnow() + timeOffset
+		obsrv.updateTime()
 		
 		# Render Objects to Window
-		render(catalog, stdscr, celes)
+		render(catalog, stdscr, obsrv)
 		
 		
 		# Get key events
 		key = stdscr.getch()
 			# Navigation Controls
 		if key in [ord('w'), curses.KEY_UP] :  # Up
-			celes.lookUp(celes.height / 10)
+			obsrv.lookUp(obsrv.height / 10)
 		elif key in [ord('s'), curses.KEY_DOWN] :  # Down
-			celes.lookUp(-celes.height / 10)
+			obsrv.lookUp(-obsrv.height / 10)
 		elif key in [ord('a'), curses.KEY_LEFT] :  # Left
-			celes.lookRight(-celes.width / 10)
+			obsrv.lookRight(-obsrv.width / 10)
 		elif key in [ord('d'), curses.KEY_RIGHT] :  # Right
-			celes.lookRight(celes.width / 10)
+			obsrv.lookRight(obsrv.width / 10)
 		elif key == ord('q') :  # Counter-Clockwise Turn
-			celes.lookClock(-0.08)
+			obsrv.lookClock(-0.08)
 		elif key == ord('e') :  # Clockwise Turn
-			celes.lookClock(0.08)
+			obsrv.lookClock(0.08)
 			
 			# Zoom Controls
 		elif key == ord('W') :  # Zoom In Vertically
-			celes.height /= 1.1
+			obsrv.height /= 1.1
 		elif key == ord('S') :  # Zoom Out Vertically
-			celes.height *= 1.1
+			obsrv.height *= 1.1
 		elif key == ord('A') :  # Zoom Out Horizontally
-			celes.width *= 1.1
+			obsrv.width *= 1.1
 		elif key == ord('D') :  # Zoom In Horizontally
-			celes.width /= 1.1
+			obsrv.width /= 1.1
 		elif key == ord('Q') :  # Zoom Out
-			celes.height *= 1.1
-			celes.width *= 1.1
+			obsrv.height *= 1.1
+			obsrv.width *= 1.1
 		elif key == ord('E') :  # Zoom In
-			celes.height /= 1.1
-			celes.width /= 1.1
+			obsrv.height /= 1.1
+			obsrv.width /= 1.1
 			
 			# Selection Controls
 		elif key == ord('k') :  # Move Selection Up
-			celes.selectBy(-1, isByX=False)
+			obsrv.selectBy(-1, isByX=False)
 		elif key == ord('j') :  # Move Selection Down
-			celes.selectBy(1, isByX=False)
+			obsrv.selectBy(1, isByX=False)
 		elif key == ord('h') :  # Move Selection Left
-			celes.selectBy(-1, isByX=True)
+			obsrv.selectBy(-1, isByX=True)
 		elif key == ord('l') :  # Move Selection Right
-			celes.selectBy(1, isByX=True)
+			obsrv.selectBy(1, isByX=True)
 		elif key in list(map(ord, ['x', 'X', curses.ascii.ctrl('c'), curses.ascii.ctrl('z')])) :  # Quit
 			running = False
 	

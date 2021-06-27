@@ -1,340 +1,291 @@
-import datetime as dt
+import math
+import sys
+from datetime import datetime, timedelta
+from typing import Tuple
 
-from sphere import *
-from star import Stellar, Catalog
+from sphere import Angle, SpherePoint, Rotation
 
-from typing import List
+Vector = Tuple[float, float, float]  # Three dimensional real vector
+
+# Gravitation Constant in km^3 / (kg * s^2)
+GRAVITATIONAL_CONSTANT = 6.6743015e-20
+
+# Standard epoch of noon on Jan 1st, 2000
+EPOCH_J2000 = datetime(2000, 1, 1, 12, 0, 0, 0)
 
 
-class Celestial:
+class Rotator:
 	"""
-	Store the state of an observer
-	
-	To send points in the viewing port to a rectangular window, a local mercator projection is used
-	
 	Attributes:
-	    __view : Rotation -- Transformation from horizontal coordinates to the viewers perspective
-	    width : float -- Width (in radians) of the viewing port
-	    height : float -- Height (in radians) of the viewing port
-	    
-		__total : Rotation -- Transformation from equatorial coordinates to viewer perspective
-	    __sky : Rotation -- Store the transformation from equatorial coordinates to horizontal coordinates
-	    __time : dt.datetime -- Date and time of observation
-	    __loc : SpherePoint -- Location on Earth's surface of observation
-	    
-	    __byX : [(float, Stellar)] -- List of objects visible in window ordered by x-value. First element of tuple is x-value
-	    __byY : [(float, Stellar)] -- List of objects visible in window ordered by y-value. First element of tuple is y-value
-	    selected : Stellar -- Reference to currently selected object
+		period : datetime.timedelta -- Sidereal Rotation period of object
+		pole : SpherePoint -- Point on celestial sphere corresponding
+		    to the angular momentum vector
+		
+		meridian : Angle -- Angle between the ascending node and meridian at the Epoch
+		    NOTE: The ascending node, here, is the intersection point between
+		    the rotational plane and the reference plane where the body is rotating
+		    up through the reference plane
+		epoch : datetime.datetime -- The time at which the meridian angle is measured
+		
+		__fromRef : Rotation -- Transformation from Rotator's equatorial frame to reference frame
+		    NOTE: This transformation sends meridian point of the equator to the
+		    reference direction thereby ignoring the offset of the meridian which
+		    varies linearly with time
+		__rotation : Rotation -- Transformation from time-varying horizontal frame to reference frame
+		__time : datetime.datetime -- Time at which __rotation is valid
+		__loc : SpherePoint -- Location on Rotator where __rotation is valid
 	
 	Properties:
-	    sky : Rotation -- Return __sky or calculate if necessary
-	    time : datetime -- Get private date and time
-	    location : SpherePoint -- Get private location
+		fromRef : Rotation -- Transformation from reference frame to Rotator's equatorial coordinates
 	"""
 	
-	EPOCH_J2000 = dt.datetime(2000, 1, 1, hour=12)  # J2000 epoch on 12h, Jan 1st, 2000
-	
-	def __init__(self, time: dt.datetime, loc: SpherePoint, wid: float = math.radians(50), hei: float = math.radians(50)):
-		self.__view = Rotation.identity()
-		self.width = wid
-		self.height = hei
-		
-		self.__sky = None  # Save calculation for when it is needed
-		self.__total = None
-		
-		self.__time = time
-		self.__loc = loc
-		
-		# Initialize selection system
-		self.__byX, self.__byY = [], []
-		self.selected = None
-	
-	
-	
-	def lookUp(self, angle: float) -> None:
+	def __init__(self, period: timedelta,
+		meridian: Angle, epoch: datetime = EPOCH_J2000,
+		pole: SpherePoint = None,
+		right_asc: Angle = None, decl: Angle = None
+	):
 		"""
-		Move view upwards by `angle` (in radians) from the perspective of the observer
-		Negative values of `angle` move down
-		"""
-		self.__view = Rotation(0, 1, 0, angle) * self.__view
-		self.__total = None  # Mark __total for recalculation
-	
-	def lookRight(self, angle: float) -> None:
-		"""
-		Move view rightwards by `angle` (in radians) from the perspective of the observer
-		Negative values of `angle` move left
-		"""
-		self.__view = Rotation(0, 0, 1, angle) * self.__view
-		self.__total = None  # Mark __total for recalculation
-	
-	def lookClock(self, angle: float) -> None:
-		"""
-		Rotate the view by `angle` (in radians) clockwise from the perspective of the observer
-		Causes an apparent clockwise rotation of while maintaining the center of the view
-		Negative values of `angle` rotate counter-clockwise
-		"""
-		self.__view = Rotation(-1, 0, 0, angle) * self.__view
-		self.__total = None  # Mark __total for recalculation
-	
-	def lookTo(self, point: SpherePoint, prop: float = 1) -> None:
-		"""
-		Move view so that the center of the view points to `point`
-		Note: `point` is in horizontal coordinates
+		Construct a Rotator with the given parameters
 		
 		Args:
-			point : SpherePoint -- point to look at
-			prop : float -- how much of the way to `point` the rotation goes
-		"""
-		# Calculate apparent position
-		appar = self.__view(point)
-		# Move into center of view
-		self.__view = Rotation.moveTo(appar, SpherePoint(0, 0), prop) * self.__view
-		self.__total = None  # Mark __total for recalculation
-	
-	
-	
-	# Methods for Selection System
-	
-	def selectBy(self, shift: int, isByX: bool):
-		"""
-		Select different element in __byline or __bycolm, moving selection
-		
-		Args:
-		    shift : int -- Amount by which to shift selection in __byX or __byY, +1 corresponds to the next element
-		    isByX : bool -- Whether __byline should be used or __bycolm
+			period : datetime.timedelta -- Sidereal Rotation period
+			meridian : Angle -- Angle between Ascending Node and Meridian at Epoch
+			epoch : datetime.datetime -- Time at which meridian was measured
+			
+			pole : SpherePoint -- Pole of Rotator
+			right_asc : -- Right Ascension of the North Pole
+			decl : -- Declination of the North Pole
+			NOTE: One of pole or (right_asc and decl) should be provided
 		"""
 		
-		# Get list to use for shifting
-		if isByX:
-			lst = self.__byX
+		self.period = period
+		self.meridian = meridian
+		self.epoch = epoch
+		
+		if pole is not None:
+			# Take pole if present
+			self.pole = pole
+		elif right_asc is not None and decl is not None:
+			# Try to use right_asc and decl, otherwise
+			self.pole = SpherePoint(decl, right_asc)
 		else:
-			lst = self.__byY
+			self.pole = None
 		
-		try:
-			# Find selected object
-			ind = list(map(lambda x: x[1], lst)).index(self.selected)
-			# Shift index
-			ind += shift
-		except ValueError:  # If selected object isn't in list choose defaults
-			if shift >= 0 :
-				ind = 0  # When shift is moves forward select the first
-			else:
-				ind = -1  # When shift moves backward select the last
+		# Defer calculation of transformations
+		self.__fromRef = None
+		self.__time, self.__loc, self.__rotation = None, None, None
+	
+	@property
+	def fromRef(self) -> Rotation:
+		""" Return transformation from the reference plane to the Rotator's equatorial coordinates """
+		if self.__fromRef is None:
+			if self.pole is None:
+				raise ValueError("No pole present. Cannot calculate the reference transformation")
+			
+			# Create transformation from Reference coordinates to Rotator's Equatorial coordinates
+			# Moving the ascending node of the Rotator onto the reference direction (origin)
+			self.__fromRef = Rotation((0, 0, -1), self.pole.longAng + Angle.POS_RIGHT)
+			
+			# Rotate the Rotator's equator onto the reference plane
+			self.__fromRef = Rotation((-1, 0, 0), self.pole.latAng.complement) * self.__fromRef
+			
+			# Move the Rotator's meridian at epoch onto the reference direction
+			self.__fromRef = Rotation((0, 0, -1), self.meridian) * self.__fromRef
 		
-		# Set new selection
-		if len(lst) == 0 :
-			self.selected = None  # When no object to select
-		else:
-			self.selected = lst[ind % len(lst)][1]
+		return self.__fromRef
 	
+	@staticmethod
+	def toHoriz(loc: SpherePoint) -> Rotation:
+		# Move the longitude line of loc to the side opposite the origin
+		rot = Rotation((0, 0, 1), loc.longAng.supplement)
+		
+		# Move the northward direction (Horizontal coordinates) onto the origin
+		rot = Rotation((0, 1, 0), loc.latAng.complement) * rot
+		return rot
 	
-	def __addVisible(self, obj: Stellar, x: float, y: float):
+	def rotation(self, time: datetime, loc: SpherePoint) -> Rotation:
 		"""
-		Add new visible object into __byX and __byY
+		Get transformation from the reference frame to the
+		horizontal frame for a given location and time
 		
 		Args:
-		    obj : Stellar -- Object to add to lists
-			x : int -- X-value of obj in window
-			y : int -- Y-value of obj in window
-		"""
-		
-		# Find index in self.__byX to put obj
-		ind = 0
-		for x1, _ in self.__byX :
-			if x1 >= x:
-				break
-			ind += 1
-		
-		# Insert element at index
-		self.__byX.insert(ind, (x, obj))
-		
-		# Find index in self.__bycolm to put obj
-		ind = 0
-		for y1, _ in self.__byY :
-			if y1 >= y:
-				break
-			ind += 1
-		
-		# Insert element at index
-		self.__byY.insert(ind, (y, obj))
-	
-	def clearVisible(self):
-		"""
-		Clear lists of visible objects
-		"""
-		
-		self.__byX = []
-		self.__byY = []
-	
-	
-	
-	@property
-	def sky(self) -> Rotation:
-		if self.__sky is None:
-			# Calculate sky transformation from __time and __loc
-			
-			# Calculate timedelta from epoch (J2000)
-			diff = self.__time - Celestial.EPOCH_J2000
-			
-			# ERA (Earth Rotation Angle) in radians
-			days = diff.total_seconds() / 86400
-			era = 2 * math.pi * (0.7790572732640 + 1.00273781191135448 * days)
-			
-			# GMSTp (polynomial part of Greenwhich Mean Sidereal Time) in arcseconds
-			# Correction to ERA compensating for precession
-			cent = days / 36525  # Number of centuries from epoch (J2000)
-			gmstp = 0.014506 + 4612.156534 * cent + 1.3915817 * cent * cent
-			
-			# GMST in radians
-			gmst = era + math.radians(gmstp / 3600)
-			
-			# Reorients celestial sphere for time
-			tmrot = Rotation(0, 0, 1, -gmst)
-			
-			# Reorients sphere for location
-			reloc = Rotation(0, 1, 0, math.pi / 2 - self.__loc.lat) * Rotation(0, 0, 1, math.pi - self.__loc.long)
-			
-			# Combine both corrections
-			self.__sky = reloc * tmrot
-		
-		return self.__sky
-	
-	@property
-	def total(self) -> Rotation:
-		if self.__total is None or self.__sky is None :
-			# Reclaculate total transform if necessary
-			self.__total = self.__view * self.sky
-		
-		return self.__total
-	
-	@property
-	def time(self) -> dt.datetime:
-		return self.__time
-	
-	@time.setter
-	def time(self, tm: dt.datetime):
-		self.__time = tm
-		self.__sky = None  # Invalidate sky transform
-	
-	@property
-	def location(self) -> SpherePoint:
-		return self.__loc
-	
-	@property
-	def center(self) -> SpherePoint:
-		"""
-		Get the SpherePoint in horizontal coordinates
-		which corresponds to the center of the viewport
-		"""
-		return self.__view.inverse(SpherePoint(0, 0))
-	
-	
-	
-	def objectInfo(self, obj: Stellar, fields: List[str] = None) -> str:
-		"""
-		Create info string for this Stellar object
-		
-		Args:
-			fields : [str] -- List of field names that
-			    should be included in the info
-			    NOTE: If None then all fields are provided
+			time : datetime.datetime -- Time at which to observe at
+			loc : SpherePoint -- Location at which to observe from
 		
 		Returns:
-			str -- Informational String
+			Rotation -- Transformation from reference frame to horizontal frame
 		"""
 		
-		# Ignore case on fields
-		if fields is not None:
-			fields = set(map(lambda f: f.lower(), fields))
+		if self.__time == time and self.__loc == loc:
+			return self.__rotation  # Return already calculated rotation
 		
-		def doField(f):
-			""" Check whether a field should be printed """
-			return (fields is None or f in fields) and hasattr(obj, f) and getattr(obj, f) is not None
+		# Transform from reference coordinates to this Rotator's equatorial coordinates
+		rot = self.fromRef
 		
-		# Accumulate string
-		info = obj.name  # Show name
-		# Show constellation name
-		if doField('constell'):
-			info += '    (' + obj.constell + ')'
-		info += '\n'
+		# Rotate the meridian into the correct offset for the time
+		rot = Rotation((0, 0, -1), 2 * math.pi * ((time - self.epoch) / self.period)) * rot
 		
-		if doField('aliases'):  # Print Other Names
-			info += '  |  '.join(obj.aliases) + '\n'
+		# Transform into horizontal coordinates for the location
+		rot = Rotator.toHoriz(loc) * rot
 		
-		# Print Altitude & Azimuth if Celestial is provided
-		pt = self.sky(obj.point)  # Get location in horizontal coordinates
-		info += "(Alt, Az):  %fd ,  %fd" % (pt.latd, (-pt.longd) % 360) + '\n'  # Altitude & Azimuth in degrees
+		# Store rotation
+		self.__time, self.__loc, self.__rotation = time, loc, rot
 		
-		if doField('point'):  # Print Right Ascension and Declination
-			# Right Ascension & Declination
-			info += "(RA, Dec):  %s ,  %s" % (obj.point.longAng.hmsstr, obj.point.latAng.dmsstr) + '\n'
-		
-		# Show Magnitudes
-		isMag = False  # If at least one of the magnitudes is shown
-		if doField('appmag'):
-			info += "App Mag: %g    " % obj.appmag
-			isMag = True
-		if doField('absmag'):
-			info += "Abs Mag: %g" % obj.absmag
-			isMag = True
-		info += '\n' if isMag else ''
-		
-		# Show Distance
-		if doField('dist'):
-			info += "Distance: %s ly\n" % obj.dist
-		
-		# Show Motions
-		if doField('radial_motion'):
-			info += "Radial Motion: %f km/s\n" % obj.radial_motion
-			
-		if doField('right_asc_motion') and doField('decl_motion'):
-			info += "Proper Motion (RA, Dec): %f mas/yr,  %f mas/yr\n" % (obj.right_asc_motion, obj.decl_motion)
-		
-		return info
+		return self.__rotation
 	
-	
-	
-	def horizToWindow(self, pt: SpherePoint):
-		"""
-		Convert point `pt` in horizontal coordinates to xy-coordinate in window
-		
-		Args:
-		    pt : SpherePoint -- Location in horizontal coordinates to get xy-coordinate in window for
-		
-		Returns:
-		    (float, float)  -- x-value and y-value in window for given point
-		        Both x and y range from 0 to 1 when inside window
-		"""
-		
-		# Transform point into viewer's coordinates
-		point = self.__view(pt)
-		
-		# Convert to rectangular coordinates in window
-		return (0.5 - point.long / self.width, 0.5 - point.lat / self.height)
-	
-	def starToWindow(self, st: Stellar):
-		"""
-		Takes `st` and finds its xy-coordinates in the window
-		And adds `st` to the list of visible objects if it is visible
-		
-		Args:
-		    st : SpherePoint -- Stellar object to get coordinates of
-		
-		Returns:
-		    (float, float)  -- x-value and y-value in window for given stellar object
-		        Both x and y range from 0 to 1 when inside window
-		"""
-		
-		# Transform point into viewer's coordinates
-		point = self.total(st.point)
-		
-		# Convert to rectangular coordinates in window
-		x, y = 0.5 - point.long / self.width, 0.5 - point.lat / self.height
-		
-		if 0 <= x < 1 and 0 <= y < 1 :
-			# Add to lists of visible objects if visible
-			self.__addVisible(st, x, y)
-		
-		return x, y
+	def __call__(self, time: datetime, loc: SpherePoint) -> Rotation:
+		""" Alias for self.rotation(time, loc) """
+		return self.rotation(time, loc)
 
+
+
+class Orbit:
+	"""
+	The parameters to describe an orbit.
+	
+	The reference frame for the inclin, long_asc, and arg_peri
+	are the ecliptical coordinates. The ecliptic plane as the
+	reference plane and vernal point is the reference direction / origin
+	
+	Attributes:
+		eccen : float -- Eccentricity of the Orbit
+		semimajor : float -- Length of the Semimajor Axis in Kilometers
+		
+		inclin : Angle -- Inclination of the orbit from the reference plane
+		long_asc : Angle -- Longitude of the Ascending Node
+		    NOTE: The ascending node is the point where the orbital plane
+		    and reference plane cross at which the object travels up through the reference plane.
+		arg_peri : Angle -- The Argument of Periapsis which is the angle
+		    between the longitude of the ascending node and the periapsis
+		    traveling in the direction of orbit.
+		
+		mean_anom : Angle -- Mean anomaly of the object from the periapsis at the epoch
+		epoch : datetime.datetime -- Time at which the mean anomaly was found
+		
+		__fromOrbit : Rotation -- Cached Transformation from orbital frame to reference frame
+		    NOTE: The reference direction of the orbital frame is the periapsis
+		          The reference plane of the orbital frame is the orbital plane
+		__period : timedelta -- Amount of time necessary to revolve once (Sidereal)
+		
+		__position : (float, float, float) -- Cached location of the object at a given time
+		__time : datetime.datetime -- Time at which the object was at __position
+	"""
+	
+	def __init__(self,
+		eccen: float, semimajor: float,
+		inclin: Angle, long_asc: Angle, arg_peri: Angle,
+		mean_anom: Angle, epoch: datetime = EPOCH_J2000,
+		grav_param: float = None, mass: float = None, period: float = None
+	):
+		self.eccen = eccen
+		self.semimajor = semimajor
+		
+		# Set angular values
+		self.inclin = inclin
+		self.long_asc = long_asc
+		self.arg_peri = arg_peri
+		
+		# Set point data
+		self.mean_anom = mean_anom
+		self.epoch = epoch
+		
+		# Set gravitational parameter
+		if mass is not None:
+			# Mass takes precedence when present
+			self.grav_param = GRAVITATIONAL_CONSTANT * mass
+		elif grav_param is not None:
+			self.grav_param = grav_param
+		else:
+			raise ValueError("Either grav_param or mass must be provided to find the Gravitational Parameter")
+		
+		# Defer calculation of orbital transform
+		self.__fromOrbit = None
+		
+		# Set period if given
+		if period is not None:
+			self.__period = period
+		else:
+			self.__period = None
+		
+		# Create empty cache for position
+		self.__time, self.__position = None, None
+	
+	@property
+	def fromOrbit(self) -> Rotation:
+		if self.__fromOrbit is None:
+			# Calculate the transform
+			# Move the periapsis off of the reference direction
+			# And move the ascending node onto it
+			self.__fromOrbit = Rotation((0, 0, 1), self.arg_peri)
+			
+			# Incline orbital plane off of reference plane
+			self.__fromOrbit = Rotation((1, 0, 0), self.inclin) * self.__fromOrbit
+			
+			# Rotate ascending node off of the reference direction
+			self.__fromOrbit = Rotation((0, 0, 1), self.long_asc) * self.__fromOrbit
+		
+		return self.__fromOrbit
+	
+	@property
+	def period(self) -> timedelta:
+		if math.isclose(self.grav_param, 0):
+			return None
+		elif self.__period is None:
+			# Find period using semimajor axis and gravitational parameter
+			self.__period = 2 * math.pi * self.semimajor * math.sqrt(self.semimajor / self.grav_param)
+			# Convert to timedelta
+			self.__period = timedelta(seconds=self.__period)
+		
+		return self.__period
+	
+	def position(self, time: datetime) -> Vector:
+		"""
+		Provide position of an object in this orbit at `time` as a 3-vector
+		The reference frame for the output is ICRS / equatorial coordinates
+		
+		Args:
+			time : datetime -- Time at which to find position
+		
+		Returns:
+			(float, float, float) -- Three dimensional vector position in
+			    reference frame coordinates
+		"""
+		
+		# Return position if already calculated
+		if time == self.__time:
+			return self.__position
+		
+		# More quickly refer to values
+		e = self.eccen
+		e2 = e * e
+		
+		# Calculate the current mean anomaly in radians
+		mean_anom = 2 * math.pi * ((time - self.epoch) / self.period) + self.mean_anom.radians
+		
+		# Calculate the true anomaly
+		true_anom = mean_anom
+		true_anom += (2 - e2 / 4) * e * math.sin(mean_anom)
+		true_anom += 5 * e2 * math.sin(2 * mean_anom) / 4
+		true_anom += 13 * e2 * e * math.sin(3 * mean_anom) / 12
+		
+		# Find radius
+		radius = self.semimajor * (1 - e2) / (1 + e * math.cos(true_anom))
+		
+		# Get vector location in orbital coordinates
+		vec = (radius * math.cos(true_anom), radius * math.sin(true_anom), 0)
+		
+		# Transform from orbital coordinates to ecliptical coordinates
+		vec = self.fromOrbit(vec)
+		
+		# Send ecliptical coordinates to ICRS / equatorial
+		vec = Rotation((1, 0, 0), math.radians(23.4365))(vec)
+		
+		# Save values to cache
+		self.__position, self.__time = vec, time
+		
+		return self.__position
+	
+	def __call__(self, time: datetime) -> Tuple[float, float, float]:
+		""" Alias for self.position(time) """
+		return self.position(time)
 

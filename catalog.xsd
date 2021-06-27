@@ -5,15 +5,17 @@
 <xs:element name="catalog">
 	<xs:complexType>
 		<xs:sequence>
-			<!-- List of Stellar objects -->
-			<xs:element name="stellar" minOccurs="0" maxOccurs="unbounded" type="Stellar"/>
+			<!-- List of Stellar objects or orbiting Bodies -->
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element name="stellar" type="Stellar"/>
+				<xs:element name="body" type="Body"/>
+			</xs:choice>
 		</xs:sequence>
 	</xs:complexType>
 </xs:element>
 
 
 
-<!-- Spherical Type for location tag -->
 <xs:simpleType name="AngleHMS">
 	<!-- Eg: 18h 36m 15.6s -->
 	<xs:restriction base="xs:string">
@@ -28,6 +30,7 @@
 	</xs:restriction>
 </xs:simpleType>
 
+<!-- Spherical Type for location tag -->
 <xs:complexType name="Spherical">
 	<xs:attribute name="right-asc" type="AngleHMS" use="required"/>
 	<xs:attribute name="decl" type="AngleDMS" use="required"/>
@@ -35,7 +38,6 @@
 	<!-- Velocity away from Earth in kilometers per second -->
 	<xs:attribute name="distance" type="xs:decimal"/>
 </xs:complexType>
-
 
 <!-- Spherical Rate Type for motion tag -->
 <xs:complexType name="SphericalRate">
@@ -66,5 +68,92 @@
 	<xs:attribute name="name" type="xs:string" use="required"/>
 	<xs:attribute name="constellation" type="xs:string"/>
 </xs:complexType>
+
+
+
+
+
+<!-- Complex Type for Orbital Parameters -->
+<xs:complexType name="Orbit">
+	<xs:sequence>
+		<xs:element name="point">
+			<xs:complexType>
+				<!-- Mean anomaly measured in degrees -->
+				<xs:attribute name="mean-anomaly" type="xs:decimal"/>
+				<!-- Epoch date & time in ISO 8601 -->
+				<xs:attribute name="epoch" type="xs:dateTime"/>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+	
+	<xs:attribute name="eccentricity" type="xs:decimal"/>
+	<xs:attribute name="semimajor" type="xs:double"/> <!-- In Kilometers -->
+	
+	<!-- All angles are measured in degrees -->
+	<xs:attribute name="inclination" type="xs:decimal"/>
+	<xs:attribute name="longitude-ascending" type="xs:decimal"/>
+	<xs:attribute name="argument-periapsis" type="xs:decimal"/>
+</xs:complexType>
+
+<!-- Complex Type for Rotational Parameters -->
+<xs:complexType name="Rotator">
+	<xs:sequence>
+		<!-- Location of Pole rotating counter-clockwise -->
+		<xs:element name="pole">
+			<xs:complexType>
+				<xs:attribute name="right-asc" type="AngleHMS" use="required"/>
+				<xs:attribute name="decl" type="AngleDMS" use="required"/>
+			</xs:complexType>
+		</xs:element>
+		
+		<!-- Designate offset of longitude -->
+		<xs:element name="point">
+			<xs:complexType>
+				<!-- Angle between Ascending Node of Rotation and Prime Meridian at Epoch in degrees -->
+				<xs:attribute name="meridian" type="xs:decimal"/>
+				<!-- Epoch date & time in ISO 8601 -->
+				<xs:attribute name="epoch" type="xs:dateTime"/>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+	
+	<xs:attribute name="period" type="xs:double"/> <!-- In Seconds -->
+</xs:complexType>
+
+<!-- Physical Paremeters of Body -->
+<xs:complexType name="Physical">
+	<xs:attribute name="mass" type="xs:double"/> <!-- In Kilograms -->
+	<xs:attribute name="mean-radius" type="xs:double"/> <!-- In Kilometers -->
+	<xs:attribute name="density" type="xs:double"/> <!-- In Grams per Milliliter-->
+</xs:complexType>
+
+<!-- Enumeration of Stellar Types -->
+<xs:simpleType name="BodyType">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="sun"/>
+		<xs:enumeration value="planet"/>
+		<xs:enumeration value="moon"/>
+		<xs:enumeration value="dwarf planet"/>
+		<xs:enumeration value="asteroid"/>
+		<xs:enumeration value="comet"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="Body">
+	<xs:sequence>
+		<xs:element name="orbit" type="Orbit" minOccurs="1"/>
+		<xs:element name="rotation" type="Rotator" minOccurs="0"/>
+		<xs:element name="physical" type="Physical" minOccurs="0"/>
+		
+		<!-- Alternative names -->
+		<xs:element name="alias" minOccurs="0" maxOccurs="unbounded" type="xs:string"/>
+	</xs:sequence>
+	
+	<xs:attribute name="name" type="xs:string" use="required"/>
+	<xs:attribute name="type" type="BodyType" use="required"/>
+	<xs:attribute name="symbol" type="xs:string"/>
+	<xs:attribute name="parent" type="xs:string"/>
+</xs:complexType>
+
 
 </xs:schema>
