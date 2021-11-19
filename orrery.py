@@ -157,7 +157,7 @@ def render(catalog: Catalog, win: 'curses.window', obsrv: Observer, doCardinals:
 	# Draw Info about selected object
 	if obsrv.selected is not None :
 		sel = obsrv.selected
-		lines = sel.__str__(observer=obsrv, fields={'constell', 'aliases', 'point', 'altaz', 'period'}).split('\n')
+		lines = sel.__str__(observer=obsrv, fields={'constell', 'aliases', 'point', 'altaz', 'type'}).split('\n')
 		for i in range(len(lines)):
 			win.addstr(i, 0, lines[i])
 	
@@ -235,8 +235,8 @@ if __name__ == '__main__':
 		action='append_const', dest='show', const=['point'],
 		help="Show the Right Ascension and Declination"
 	)
-	show_parser.add_argument('-m', '--mass',
-		action='append_const', dest='show', const=['mass'],
+	show_parser.add_argument('-p', '--physical',
+		action='append_const', dest='show', const=['mass', 'mean-radius', 'density'],
 		help="Show Mass of the object in Kilograms"
 	)
 	show_parser.add_argument('-M', '--magnitude',
@@ -248,7 +248,7 @@ if __name__ == '__main__':
 		help="Show Distance to object"
 	)
 	show_parser.add_argument('-v', '--velocity',
-		action='append_const', dest='show', const=['radial_motion', 'right_asc_motion', 'decl_motion'],
+		action='append_const', dest='show', const=['radial_motion', 'motion'],
 		help="Show Radial Velocity as well as rate of change of Right Ascension and Declination"
 	)
 	show_parser.add_argument('-O', '--orbit',
@@ -270,7 +270,8 @@ if __name__ == '__main__':
 	# Construct Celestial Sphere
 	obsrv = Observer(
 		args.time, args.loc, catalog['Earth'],
-		math.radians(args.wid), math.radians(args.hei)
+		math.radians(args.wid), math.radians(args.hei),
+		args.isSync
 	)
 	
 	
@@ -284,7 +285,7 @@ if __name__ == '__main__':
 				fields = {f for fs in args.show for f in fs}
 			
 			# Add default fields to always show
-			fields |= {'constell', 'parent', 'aliases', 'point', 'altaz'}
+			fields |= {'constell', 'parent', 'aliases', 'point', 'altaz', 'type'}
 			
 			# Show all if --all specified
 			if None in fields:
@@ -336,7 +337,7 @@ if __name__ == '__main__':
 		
 		# Get key events
 		key = stdscr.getch()
-			# Navigation Controls
+		# Navigation Controls
 		if key in [ord('w'), curses.KEY_UP] :  # Up
 			obsrv.lookUp(obsrv.height / 10)
 		elif key in [ord('s'), curses.KEY_DOWN] :  # Down

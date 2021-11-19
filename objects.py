@@ -213,6 +213,9 @@ class Body(NamedMixin):
 		# Show parent body name
 		if doField('parent') and hasField(self, 'parent'):
 			info += '    (%s)' % self.parent.name
+		# Show body type
+		if doField('type'):
+			info += '  :  %s' % self.type.id
 		info += '\n'
 		
 		if doField('aliases') and len(self.aliases) > 0:  # Print Other Names
@@ -225,7 +228,7 @@ class Body(NamedMixin):
 				# Print Altitude & Azimuth if toView transform is provided
 				if doField('altaz'):
 					pt = observer.toHoriz(radec)  # Get horizontal coordinates of point
-					info += "(Alt, Az):  %fd ,  %fd" % (pt.latd, (-pt.longd) % 360) + '\n'  # Altitude & Azimuth in degrees
+					info += "(Alt, Az):  %gd ,  %gd" % (pt.latd, (-pt.longd) % 360) + '\n'  # Altitude & Azimuth in degrees
 				
 				if doField('point'):  # Print Right Ascension and Declination
 					info += "(RA, Dec):  %s ,  %s\n" % (radec.longAng.hmsstr, radec.latAng.dmsstr)
@@ -339,6 +342,7 @@ class Stellar(NamedMixin):
 		# Initialize name and aliases
 		self.initNames(prms.name, prms.aliases)
 		self.constell = prms.constell
+		self.type = prms.type
 		
 		# Set symbol according to type and apparent magnitude
 		self.__createSymbol(prms.type, prms.appmag)
@@ -407,15 +411,22 @@ class Stellar(NamedMixin):
 		if fields is not None:
 			fields = {f.lower() for f in fields}
 		
+		def hasField(obj, f):
+			""" Check whether `obj` has a non-None field `f` """
+			return hasattr(self, f) and getattr(self, f) is not None
+		
 		def doField(f):
 			""" Check whether a field should be printed """
-			return (fields is None or f in fields) and hasattr(self, f) and getattr(self, f) is not None
+			return fields is None or f in fields
 		
 		# Accumulate string
 		info = self.name  # Show name
 		# Show constellation name
-		if doField('constell'):
-			info += '    (' + self.constell + ')'
+		if doField('constell') and hasField(self, 'constell'):
+			info += '    (%s)' % self.constell
+		# Show type of stellar object
+		if doField('type'):
+			info += '  :  %s' % self.type.id
 		info += '\n'
 		
 		if doField('aliases'):  # Print Other Names
@@ -432,24 +443,24 @@ class Stellar(NamedMixin):
 		
 		# Show Magnitudes
 		isMag = False  # If at least one of the magnitudes is shown
-		if doField('appmag'):
+		if doField('appmag') and hasField(self, 'appmag'):
 			info += "App Mag: %g    " % self.appmag
 			isMag = True
-		if doField('absmag'):
+		if doField('absmag') and hasField(self, 'absmag'):
 			info += "Abs Mag: %g" % self.absmag
 			isMag = True
 		info += '\n' if isMag else ''
 		
 		# Show Distance
-		if doField('dist'):
+		if doField('dist') and hasField(self, 'dist'):
 			info += "Distance: %s ly\n" % self.dist
 		
 		# Show Motions
-		if doField('radial_motion'):
-			info += "Radial Motion: %f km/s\n" % self.radial_motion
+		if doField('radial_motion') and hasField(self, 'radial_motion'):
+			info += "Radial Motion: %g km/s\n" % self.radial_motion
 			
-		if doField('right_asc_motion') and doField('decl_motion'):
-			info += "Proper Motion (RA, Dec): %f mas/yr,  %f mas/yr\n" % (self.right_asc_motion, self.decl_motion)
+		if doField('motion') and hasField(self, 'right_asc_motion') and hasField(self, 'decl_motion'):
+			info += "Proper Motion (RA, Dec): %g mas/yr,  %g mas/yr\n" % (self.right_asc_motion, self.decl_motion)
 		
 		return info
 
